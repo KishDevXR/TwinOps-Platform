@@ -105,15 +105,19 @@ class TwinStateStore:
         async with self._lock:
             twin = self._twins.get(aid)
             if not twin:
-                # Dynamically register unknown asset
+                # Dynamically register unknown asset using pilot config if available
+                from simulator.config import PILOT_ASSETS
+                cfg = next((a for a in PILOT_ASSETS if a.asset_id == aid), None)
                 twin = LiveAssetTwin(
                     asset_id=aid,
                     site=msg.site,
-                    type_id="cnc_machine",
-                    name=aid,
+                    type_id=cfg.type_id if cfg else "cnc_machine",
+                    name=cfg.name if cfg else aid,
+                    position_3d=dict(cfg.position_3d) if cfg else {"x": 0.0, "y": 0.0, "z": 0.0, "rot_y": 0.0},
                     last_updated=msg.ts,
                 )
                 self._twins[aid] = twin
+
 
             twin.last_updated = msg.ts
             twin.operational_status = str(msg.status.value)

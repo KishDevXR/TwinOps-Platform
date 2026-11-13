@@ -32,6 +32,10 @@ export function mergeTwin(existing: LiveAssetTwin | undefined, item: BackendTwin
     metrics[k] = { ...metrics[k], ...m } // keep the unit, which updates do not carry
   }
   const statusColor = item.status_color ?? existing?.status_color ?? 'grey'
+  const itemPos = item.position_3d ?? item.position
+  const isItemPosNonZero = itemPos && (Math.abs(itemPos.x) > 0.001 || Math.abs(itemPos.z) > 0.001)
+  const position = isItemPosNonZero ? itemPos! : (existing?.position ?? itemPos ?? { x: 0, y: 0, z: 0 })
+
   return {
     asset_id: item.asset_id,
     name: item.name ?? existing?.name ?? item.asset_id,
@@ -40,7 +44,8 @@ export function mergeTwin(existing: LiveAssetTwin | undefined, item: BackendTwin
     criticality: item.criticality ?? existing?.criticality ?? 'C',
     status: item.operational_status ?? item.status ?? existing?.status ?? 'OFFLINE',
     status_color: statusColor,
-    position: item.position_3d ?? item.position ?? existing?.position ?? { x: 0, y: 0, z: 0 },
+    position,
+
     metrics,
     derived: { ...(existing?.derived ?? {}), ...(item.derived_metrics ?? item.derived ?? {}) },
     last_seen: item.last_updated ?? item.last_seen ?? existing?.last_seen ?? '',

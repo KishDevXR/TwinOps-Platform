@@ -52,7 +52,26 @@ async def lifespan(app: FastAPI):
     async with get_async_session() as session:
         await seed_pilot_data(session)
 
+    # Initialize 3D Digital Twins with exact plant layout coordinates
+    from simulator.config import PILOT_ASSETS
+
+    state_store.initialize_from_assets(
+        [
+            {
+                "id": a.asset_id,
+                "name": a.name,
+                "type_id": a.type_id,
+                "criticality": a.criticality,
+                "position": dict(a.position_3d),
+                "lifecycle_state": "Operating",
+            }
+            for a in PILOT_ASSETS
+        ],
+        site="PUNE-01",
+    )
+
     # 2. Preload rules & start telemetry flusher
+
     await alarm_engine.load_rules()
     ingest_service.start()
 

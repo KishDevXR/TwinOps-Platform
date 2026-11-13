@@ -1,7 +1,9 @@
 import React, { useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import type { LiveAssetTwin, StatusColor, VisualizationLayer } from '../../types/twin'
+
 
 interface MachineMeshProps {
   asset: LiveAssetTwin
@@ -409,7 +411,25 @@ export const MachineMesh: React.FC<MachineMeshProps> = ({
       {/* Dynamic Mesh */}
       {renderGeometryByType()}
 
+      {/* Floating Asset Label Badge */}
+      <Html
+        position={[0, asset.type_id === 'ahu' ? 1.6 : asset.type_id === 'loading_dock' ? 5.2 : 3.2, 0]}
+        center
+        distanceFactor={45}
+      >
+        <div
+          className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap shadow border transition-all pointer-events-none select-none ${
+            isSelected
+              ? 'bg-blue-600 text-white border-blue-400 scale-110 shadow-blue-500/50'
+              : 'bg-slate-900/85 text-slate-100 border-slate-700/80'
+          }`}
+        >
+          {asset.asset_id}
+        </div>
+      </Html>
+
       {/* Status Warning Beacon (Sphere on top) */}
+
       <mesh
         ref={beaconRef}
         position={[0, asset.type_id === 'ahu' ? 1.0 : asset.type_id === 'loading_dock' ? 4.9 : 2.7, 0]}
