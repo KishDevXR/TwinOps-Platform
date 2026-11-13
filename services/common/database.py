@@ -7,7 +7,7 @@ Ref: docs/05_design_document.md §2
 import os
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 
 from sqlalchemy import (
@@ -282,6 +282,10 @@ class WorkOrderModel(Base):
     checklist: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
     parts_used: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
     labour_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
+    )
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class PMPlanModel(Base):
@@ -297,6 +301,7 @@ class PMPlanModel(Base):
     trigger_type: Mapped[str] = mapped_column(String(32), default="meter")  # calendar, meter
     interval_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     interval_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_meter_hours: Mapped[float | None] = mapped_column(Float, default=0.0)
     checklist: Mapped[list[str]] = mapped_column(JSONType, default=list)
     last_done: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -312,6 +317,7 @@ class SparePartModel(Base):
     qty: Mapped[int] = mapped_column(Integer, default=0)
     reorder_level: Mapped[int] = mapped_column(Integer, default=5)
     location: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    unit_cost: Mapped[float | None] = mapped_column(Float, default=0.0)
 
 
 class AuditLogModel(Base):
@@ -508,5 +514,95 @@ async def seed_pilot_data(session: AsyncSession):
         ]
         for r in default_rules:
             session.add(r)
+
+    # 8. Pilot Spare Parts Inventory
+    part_res = await session.execute(select(func.count(SparePartModel.id)))
+    if (part_res.scalar() or 0) == 0:
+        parts = [
+            SparePartModel(
+                id="PART-BRG-6205",
+                code="BRG-6205",
+                name="Deep Groove Ball Bearing 6205",
+                qty=10,
+                reorder_level=5,
+                location="Bin A-12",
+                unit_cost=450.0,
+            ),
+            SparePartModel(
+                id="PART-SEAL-M32",
+                code="SEAL-M32",
+                name="Mechanical Seal 32mm Tungsten Carbide",
+                qty=6,
+                reorder_level=3,
+                location="Bin B-04",
+                unit_cost=1850.0,
+            ),
+            SparePartModel(
+                id="PART-BELT-V1400",
+                code="BELT-V1400",
+                name="V-Belt Raw Edge Cogged 1400mm",
+                qty=8,
+                reorder_level=4,
+                location="Bin C-01",
+                unit_cost=620.0,
+            ),
+            SparePartModel(
+                id="PART-FLT-AIR-01",
+                code="FLT-AIR-01",
+                name="Air Intake Filter Cartridge Pleated",
+                qty=4,
+                reorder_level=2,
+                location="Bin D-08",
+                unit_cost=1200.0,
+            ),
+            SparePartModel(
+                id="PART-OIL-ISO46",
+                code="OIL-ISO46",
+                name="Hydraulic Oil ISO VG 46 (Liters)",
+                qty=50,
+                reorder_level=20,
+                location="Drum Rack 1",
+                unit_cost=280.0,
+            ),
+        ]
+        for p in parts:
+            session.add(p)
+
+    # 9. Pilot PM Plans
+    pm_res = await session.execute(select(func.count(PMPlanModel.id)))
+    if (pm_res.scalar() or 0) == 0:
+        pm_plans = [
+            PMPlanModel(
+                id="PM-CNC-30D",
+                asset_id="CNC-01",
+                name="CNC Monthly Preventive Maintenance",
+                trigger_type="calendar",
+                interval_days=30,
+                checklist=[
+                    "Check spindle coolant and oil levels",
+                    "Clean and inspect guideway telescopic covers",
+                    "Measure spindle runout and vibration",
+                    "Lubricate ballscrew bearings",
+                ],
+                last_done=datetime.now(UTC) - timedelta(days=30),
+            ),
+            PMPlanModel(
+                id="PM-PUMP-500H",
+                asset_id="PUMP-01",
+                name="Pump 500-Hour Bearing Greasing & Seal Inspection",
+                trigger_type="meter",
+                interval_hours=500,
+                last_meter_hours=0.0,
+                checklist=[
+                    "Inspect mechanical seal for leakage",
+                    "Apply high-temperature synthetic grease to DE/NDE bearings",
+                    "Check motor-to-pump coupling alignment",
+                    "Record baseline vibration spectrum",
+                ],
+                last_done=datetime.now(UTC) - timedelta(days=60),
+            ),
+        ]
+        for plan in pm_plans:
+            session.add(plan)
 
     await session.commit()
