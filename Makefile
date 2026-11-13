@@ -2,11 +2,20 @@
 PYTHON = .venv/Scripts/python.exe
 PYTEST = .venv/Scripts/pytest.exe
 RUFF = .venv/Scripts/ruff.exe
+NPM = npm
 
-.PHONY: test lint e2e dev simulator
+.PHONY: test test-backend test-web lint e2e dev simulator build-web
 
-test:
+test: test-backend test-web
+
+test-backend:
 	$(PYTEST) -v
+
+test-web:
+	$(NPM) --prefix web run test
+
+build-web:
+	$(NPM) --prefix web run build
 
 lint:
 	$(RUFF) check services simulator tests
@@ -22,3 +31,5 @@ dev:
 	@echo "Starting TwinOps services..."
 	$(PYTHON) -m services.telemetry.main &
 	$(PYTHON) -m services.asset.main &
+	$(PYTHON) -m services.twin.main &
+	$(NPM) --prefix web run dev &
