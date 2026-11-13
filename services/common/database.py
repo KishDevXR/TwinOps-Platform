@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from typing import Any, Optional
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Float,
@@ -224,6 +225,35 @@ class AlarmModel(Base):
     acked_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     acked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cleared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    shelved_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    shelved_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    escalated: Mapped[bool] = mapped_column(Boolean, default=False)
+    escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AlarmRuleModel(Base):
+    """Configurable threshold, rate-of-change, and stale alarm rules"""
+
+    __tablename__ = "alarm_rule"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    asset_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    asset_type_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    metric: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_type: Mapped[str] = mapped_column(
+        String(32), default="threshold"
+    )  # threshold, rate_of_change, stale
+    severity: Mapped[str] = mapped_column(String(32), default="high")  # low, medium, high, critical
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    comparison: Mapped[str] = mapped_column(String(8), default=">")  # >, >=, <, <=
+    delay_s: Mapped[float] = mapped_column(Float, default=0.0)  # delay filter in seconds
+    hysteresis: Mapped[float] = mapped_column(Float, default=0.0)  # clearance hysteresis deadband
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    message_template: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
 
 class WorkOrderModel(Base):
@@ -305,6 +335,7 @@ class AuditLogModel(Base):
 # Engine & Session Maker
 engine = create_async_engine(DATABASE_URL, echo=False)
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
+get_async_session = async_session_factory
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -338,60 +369,144 @@ async def seed_pilot_data(session: AsyncSession):
     from services.common.twin_templates import TEMPLATES
     from simulator.config import ASSET_RELATIONSHIPS, PILOT_ASSETS
 
-    # Check if already seeded
+    # Check if site hierarchy already seeded
     res = await session.execute(select(func.count(SiteModel.id)))
-    if (res.scalar() or 0) > 0:
-        return
-
-    # 1. Site
-    site = SiteModel(
-        id="PUNE-01",
-        name="Pune Auto Machining Facility",
-        timezone="Asia/Kolkata",
-        address="Chakan Industrial Area, Phase II, Pune, Maharashtra 410501",
-    )
-    session.add(site)
-
-    # 2. Area
-    area = AreaModel(id="AREA-MACHINING", site_id="PUNE-01", name="Machining & Assembly Bay")
-    session.add(area)
-
-    # 3. Lines
-    line1 = LineModel(
-        id="LINE-01", area_id="AREA-MACHINING", name="Line 1: Cylinder Head Machining"
-    )
-    line2 = LineModel(
-        id="LINE-02", area_id="AREA-MACHINING", name="Line 2: Gearbox Casing Machining"
-    )
-    session.add_all([line1, line2])
-
-    # 4. Asset Types (from twin templates)
-    for tid, tpl in TEMPLATES.items():
-        atm = AssetTypeModel(id=tid, name=tpl.name, template=tpl.model_dump())
-        session.add(atm)
-
-    # 5. Assets (all 25 pilot assets)
-    for ac in PILOT_ASSETS:
-        am = AssetModel(
-            id=ac.asset_id,
-            line_id=ac.line_id,
-            type_id=ac.type_id,
-            name=ac.name,
-            make=ac.make,
-            model=ac.model,
-            serial_no=ac.serial_no,
-            criticality=ac.criticality,
-            lifecycle_state="Operating",
-            position=ac.position_3d,
-            properties=ac.nominal_params,
+    if (res.scalar() or 0) == 0:
+        # 1. Site
+        site = SiteModel(
+            id="PUNE-01",
+            name="Pune Auto Machining Facility",
+            timezone="Asia/Kolkata",
+            address="Chakan Industrial Area, Phase II, Pune, Maharashtra 410501",
         )
-        session.add(am)
+        session.add(site)
 
-    # 6. Relationships
-    for rel in ASSET_RELATIONSHIPS:
-        arm = AssetRelationModel(
-            from_asset=rel["from_asset"], to_asset=rel["to_asset"], kind=rel["kind"]
+        # 2. Area
+        area = AreaModel(id="AREA-MACHINING", site_id="PUNE-01", name="Machining & Assembly Bay")
+        session.add(area)
+
+        # 3. Lines
+        line1 = LineModel(
+            id="LINE-01", area_id="AREA-MACHINING", name="Line 1: Cylinder Head Machining"
         )
-        session.add(arm)
+        line2 = LineModel(
+            id="LINE-02", area_id="AREA-MACHINING", name="Line 2: Gearbox Casing Machining"
+        )
+        session.add_all([line1, line2])
+
+        # 4. Asset Types (from twin templates)
+        for tid, tpl in TEMPLATES.items():
+            atm = AssetTypeModel(id=tid, name=tpl.name, template=tpl.model_dump())
+            session.add(atm)
+
+        # 5. Assets (all 25 pilot assets)
+        for ac in PILOT_ASSETS:
+            am = AssetModel(
+                id=ac.asset_id,
+                line_id=ac.line_id,
+                type_id=ac.type_id,
+                name=ac.name,
+                make=ac.make,
+                model=ac.model,
+                serial_no=ac.serial_no,
+                criticality=ac.criticality,
+                lifecycle_state="Operating",
+                position=ac.position_3d,
+                properties=ac.nominal_params,
+            )
+            session.add(am)
+
+        # 6. Relationships
+        for rel in ASSET_RELATIONSHIPS:
+            arm = AssetRelationModel(
+                from_asset=rel["from_asset"], to_asset=rel["to_asset"], kind=rel["kind"]
+            )
+            session.add(arm)
+
+    # 7. Default Alarm Rules (ISA-18.2)
+    rule_res = await session.execute(select(func.count(AlarmRuleModel.id)))
+    if (rule_res.scalar() or 0) == 0:
+        default_rules = [
+            AlarmRuleModel(
+                id="RULE-TEMP-MOTOR-HI",
+                asset_type_id="centrifugal_pump",
+                metric="motor_temp_c",
+                rule_type="threshold",
+                severity="high",
+                threshold=80.0,
+                comparison=">",
+                delay_s=10.0,
+                hysteresis=2.0,
+                enabled=True,
+                message_template="{asset_id} motor temperature {value:.1f}°C exceeded limit (80.0°C) for 10s",
+            ),
+            AlarmRuleModel(
+                id="RULE-TEMP-MOTOR-HIHI",
+                asset_type_id="centrifugal_pump",
+                metric="motor_temp_c",
+                rule_type="threshold",
+                severity="critical",
+                threshold=95.0,
+                comparison=">",
+                delay_s=2.0,
+                hysteresis=2.0,
+                enabled=True,
+                message_template="{asset_id} motor temperature {value:.1f}°C exceeded critical limit (95.0°C)",
+            ),
+            AlarmRuleModel(
+                id="RULE-TEMP-SPINDLE-HI",
+                asset_type_id="cnc_machine",
+                metric="spindle_temp_c",
+                rule_type="threshold",
+                severity="high",
+                threshold=65.0,
+                comparison=">",
+                delay_s=5.0,
+                hysteresis=2.0,
+                enabled=True,
+                message_template="{asset_id} spindle temperature {value:.1f}°C exceeded warning limit (65.0°C)",
+            ),
+            AlarmRuleModel(
+                id="RULE-TEMP-SPINDLE-HIHI",
+                asset_type_id="cnc_machine",
+                metric="spindle_temp_c",
+                rule_type="threshold",
+                severity="critical",
+                threshold=75.0,
+                comparison=">",
+                delay_s=2.0,
+                hysteresis=2.0,
+                enabled=True,
+                message_template="{asset_id} spindle overheat {value:.1f}°C exceeded critical limit (75.0°C)",
+            ),
+            AlarmRuleModel(
+                id="RULE-VIB-PUMP-HI",
+                asset_type_id="centrifugal_pump",
+                metric="vibration_mm_s",
+                rule_type="threshold",
+                severity="high",
+                threshold=4.5,
+                comparison=">",
+                delay_s=5.0,
+                hysteresis=0.5,
+                enabled=True,
+                message_template="{asset_id} vibration {value:.2f} mm/s exceeded ISO 10816 Zone C (4.5 mm/s)",
+            ),
+            AlarmRuleModel(
+                id="RULE-VIB-PUMP-HIHI",
+                asset_type_id="centrifugal_pump",
+                metric="vibration_mm_s",
+                rule_type="threshold",
+                severity="critical",
+                threshold=7.1,
+                comparison=">",
+                delay_s=2.0,
+                hysteresis=0.5,
+                enabled=True,
+                message_template="{asset_id} vibration {value:.2f} mm/s exceeded ISO 10816 Zone D (7.1 mm/s)",
+            ),
+        ]
+        for r in default_rules:
+            session.add(r)
 
     await session.commit()

@@ -241,8 +241,7 @@ async def test_twn_06_historical_playback():
         from_str = (now - timedelta(minutes=10)).isoformat()
         to_str = now.isoformat()
         res = await client.get(
-            "/api/v1/assets/CNC-01/playback",
-            params={"from": from_str, "to": to_str, "speed": 10}
+            "/api/v1/assets/CNC-01/playback", params={"from": from_str, "to": to_str, "speed": 10}
         )
         assert res.status_code == 200
         playback = res.json()
@@ -278,10 +277,7 @@ def test_twn_02_websocket_push():
     """
     from starlette.testclient import TestClient
 
-    with (
-        TestClient(app) as client,
-        client.websocket_connect("/ws/live?site=PUNE-01") as websocket
-    ):
+    with TestClient(app) as client, client.websocket_connect("/ws/live?site=PUNE-01") as websocket:
         # First message should be full plant snapshot
         initial_data = websocket.receive_json()
         assert initial_data["type"] == "snapshot"
