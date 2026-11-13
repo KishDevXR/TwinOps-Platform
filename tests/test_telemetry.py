@@ -39,6 +39,10 @@ async def setup_test_database():
     """Ensure DB schema is initialized and telemetry is cleared before each test."""
     await init_db()
     async with async_session_factory() as session:
+        from simulator.config import PILOT_ASSETS
+
+        pilot_ids = [a.asset_id for a in PILOT_ASSETS]
+        await session.execute(delete(AssetModel).where(AssetModel.id.not_in(pilot_ids)))
         await session.execute(delete(TelemetryModel))
         await session.commit()
         await seed_pilot_data(session)
