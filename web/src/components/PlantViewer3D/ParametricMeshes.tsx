@@ -13,7 +13,9 @@ interface MachineMeshProps {
   onPointerOver: (e: any) => void
   onPointerOut: (e: any) => void
   onClick: (e: any) => void
+  showLabel?: boolean
 }
+
 
 const STATUS_COLOR_HEX: Record<StatusColor, string> = {
   green: '#22c55e',
@@ -66,7 +68,9 @@ export const MachineMesh: React.FC<MachineMeshProps> = ({
   onPointerOver,
   onPointerOut,
   onClick,
+  showLabel = false,
 }) => {
+
   const groupRef = useRef<THREE.Group>(null)
   const beaconRef = useRef<THREE.Mesh>(null)
 
@@ -411,24 +415,27 @@ export const MachineMesh: React.FC<MachineMeshProps> = ({
       {/* Dynamic Mesh */}
       {renderGeometryByType()}
 
-      {/* Floating Asset Label Badge */}
-      <Html
-        position={[0, asset.type_id === 'ahu' ? 1.6 : asset.type_id === 'loading_dock' ? 5.2 : 3.2, 0]}
-        center
-        distanceFactor={45}
-      >
-        <div
-          className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap shadow border transition-all pointer-events-none select-none ${
-            isSelected
-              ? 'bg-blue-600 text-white border-blue-400 scale-110 shadow-blue-500/50'
-              : 'bg-slate-900/85 text-slate-100 border-slate-700/80'
-          }`}
+      {/* Floating Asset Label Badge (only if showLabel is enabled) */}
+      {showLabel && (
+        <Html
+          position={[0, asset.type_id === 'ahu' ? 1.6 : asset.type_id === 'loading_dock' ? 5.2 : 3.2, 0]}
+          center
+          distanceFactor={45}
         >
-          {asset.asset_id}
-        </div>
-      </Html>
+          <div
+            className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap shadow border transition-all pointer-events-none select-none ${
+              isSelected
+                ? 'bg-blue-600 text-white border-blue-400 scale-110 shadow-blue-500/50'
+                : 'bg-slate-900/85 text-slate-100 border-slate-700/80'
+            }`}
+          >
+            {asset.asset_id}
+          </div>
+        </Html>
+      )}
 
       {/* Status Warning Beacon (Sphere on top) */}
+
 
       <mesh
         ref={beaconRef}
