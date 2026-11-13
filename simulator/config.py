@@ -1,0 +1,371 @@
+"""
+Virtual Pilot Plant Asset Register & Layout Configuration.
+Ref: docs/01_scope_decisions.md §1, docs/05_design_document.md §1-2
+Plant: Auto-Component Machining Facility (PUNE-01)
+2 Lines, 25 Assets, ~400 Tags
+"""
+
+from typing import Any, Dict, List
+from pydantic import BaseModel
+
+
+class AssetConfig(BaseModel):
+    asset_id: str
+    name: str
+    type_id: str
+    line_id: str
+    criticality: str  # 'A', 'B', 'C'
+    make: str
+    model: str
+    serial_no: str
+    position_3d: Dict[str, float]  # {x, y, z, rot_y}
+    nominal_params: Dict[str, Any] = {}
+
+
+PILOT_ASSETS: List[AssetConfig] = [
+    # -------------------------------------------------------------
+    # LINE 1: Engine Cylinder Head Machining Line
+    # -------------------------------------------------------------
+    AssetConfig(
+        asset_id="CNC-01",
+        name="CNC Machining Centre 01 (Roughing)",
+        type_id="cnc_machine",
+        line_id="LINE-01",
+        criticality="A",
+        make="Fanuc / Robodrill",
+        model="D21MiB5",
+        serial_no="FNC-RD-2024-001",
+        position_3d={"x": 5.0, "y": 0.0, "z": 5.0, "rot_y": 0.0},
+        nominal_params={"spindle_rpm": 8500, "power_kw": 12.5, "base_temp": 42.0}
+    ),
+    AssetConfig(
+        asset_id="CNC-02",
+        name="CNC Machining Centre 02 (Semi-Finishing)",
+        type_id="cnc_machine",
+        line_id="LINE-01",
+        criticality="A",
+        make="Fanuc / Robodrill",
+        model="D21MiB5",
+        serial_no="FNC-RD-2024-002",
+        position_3d={"x": 10.0, "y": 0.0, "z": 5.0, "rot_y": 0.0},
+        nominal_params={"spindle_rpm": 9200, "power_kw": 14.0, "base_temp": 45.0}
+    ),
+    AssetConfig(
+        asset_id="CNC-03",
+        name="CNC Machining Centre 03 (Finishing)",
+        type_id="cnc_machine",
+        line_id="LINE-01",
+        criticality="A",
+        make="Haas Automation",
+        model="VF-2SS",
+        serial_no="HAS-VF-2023-109",
+        position_3d={"x": 15.0, "y": 0.0, "z": 5.0, "rot_y": 0.0},
+        nominal_params={"spindle_rpm": 10500, "power_kw": 15.5, "base_temp": 48.0}
+    ),
+    AssetConfig(
+        asset_id="CONV-01",
+        name="Line 1 In-Feed & Transfer Conveyor",
+        type_id="conveyor",
+        line_id="LINE-01",
+        criticality="B",
+        make="FlexLink",
+        model="X85B",
+        serial_no="FLX-CONV-01",
+        position_3d={"x": 10.0, "y": 0.0, "z": 2.5, "rot_y": 90.0},
+        nominal_params={"speed_m_min": 14.0, "power_kw": 3.2}
+    ),
+    AssetConfig(
+        asset_id="ROBOT-01",
+        name="Robot Cell 01 (Tend & Load)",
+        type_id="robot_cell",
+        line_id="LINE-01",
+        criticality="A",
+        make="Fanuc Robotics",
+        model="M-20iD/25",
+        serial_no="FNC-RB-001",
+        position_3d={"x": 10.0, "y": 0.0, "z": 7.5, "rot_y": 180.0},
+        nominal_params={"cycle_time_s": 32.0, "power_kw": 4.5}
+    ),
+    AssetConfig(
+        asset_id="COMP-01",
+        name="Screw Compressor 01 (Shop Air)",
+        type_id="air_compressor",
+        line_id="LINE-01",
+        criticality="A",
+        make="Atlas Copco",
+        model="GA 37 VSD+",
+        serial_no="ATC-GA37-01",
+        position_3d={"x": 2.0, "y": 0.0, "z": 12.0, "rot_y": 0.0},
+        nominal_params={"discharge_pressure_bar": 7.4, "motor_power_kw": 32.0}
+    ),
+    AssetConfig(
+        asset_id="PUMP-01",
+        name="Coolant Supply Pump 01",
+        type_id="centrifugal_pump",
+        line_id="LINE-01",
+        criticality="B",
+        make="Grundfos",
+        model="CR 45-3",
+        serial_no="GDF-CR45-01",
+        position_3d={"x": 6.0, "y": 0.0, "z": 12.0, "rot_y": 0.0},
+        nominal_params={"flow_m3h": 42.0, "discharge_bar": 5.8, "power_kw": 9.2}
+    ),
+    AssetConfig(
+        asset_id="PUMP-02",
+        name="Coolant Return & Filtration Pump 02",
+        type_id="centrifugal_pump",
+        line_id="LINE-01",
+        criticality="B",
+        make="Grundfos",
+        model="CR 45-3",
+        serial_no="GDF-CR45-02",
+        position_3d={"x": 8.0, "y": 0.0, "z": 12.0, "rot_y": 0.0},
+        nominal_params={"flow_m3h": 40.0, "discharge_bar": 5.5, "power_kw": 8.8}
+    ),
+    AssetConfig(
+        asset_id="AHU-01",
+        name="Air Handling Unit 01 (Machining Bay)",
+        type_id="ahu",
+        line_id="LINE-01",
+        criticality="C",
+        make="Voltas / Carrier",
+        model="39HQ-12",
+        serial_no="CAR-AHU-01",
+        position_3d={"x": 0.0, "y": 4.0, "z": 5.0, "rot_y": 0.0},
+        nominal_params={"fan_speed_rpm": 1420, "filter_dp_pa": 140.0}
+    ),
+    AssetConfig(
+        asset_id="EM-01",
+        name="Energy Meter 01 (Main Substation Incomer)",
+        type_id="energy_meter",
+        line_id="LINE-01",
+        criticality="A",
+        make="Schneider Electric",
+        model="PowerLogic PM8000",
+        serial_no="SCH-PM8-01",
+        position_3d={"x": -2.0, "y": 1.5, "z": 0.0, "rot_y": 0.0},
+        nominal_params={"voltage_v": 415.0, "current_a": 180.0, "power_factor": 0.94}
+    ),
+    AssetConfig(
+        asset_id="EM-02",
+        name="Energy Meter 02 (Line 1 Distribution Panel)",
+        type_id="energy_meter",
+        line_id="LINE-01",
+        criticality="B",
+        make="Schneider Electric",
+        model="EasyLogic PM5350",
+        serial_no="SCH-PM5-02",
+        position_3d={"x": 4.0, "y": 1.5, "z": 2.0, "rot_y": 0.0},
+        nominal_params={"voltage_v": 415.0, "current_a": 95.0, "power_factor": 0.92}
+    ),
+    AssetConfig(
+        asset_id="EM-03",
+        name="Energy Meter 03 (Compressor & Utilities)",
+        type_id="energy_meter",
+        line_id="LINE-01",
+        criticality="B",
+        make="Schneider Electric",
+        model="EasyLogic PM5350",
+        serial_no="SCH-PM5-03",
+        position_3d={"x": 2.0, "y": 1.5, "z": 10.0, "rot_y": 0.0},
+        nominal_params={"voltage_v": 414.0, "current_a": 65.0, "power_factor": 0.89}
+    ),
+
+    # -------------------------------------------------------------
+    # LINE 2: Transmission Gear & Casing Machining Line
+    # -------------------------------------------------------------
+    AssetConfig(
+        asset_id="CNC-04",
+        name="CNC Machining Centre 04 (5-Axis Roughing)",
+        type_id="cnc_machine",
+        line_id="LINE-02",
+        criticality="A",
+        make="Mazak",
+        model="Variaxis i-700",
+        serial_no="MZK-VX-2023-04",
+        position_3d={"x": 5.0, "y": 0.0, "z": 20.0, "rot_y": 0.0},
+        nominal_params={"spindle_rpm": 7800, "power_kw": 16.0, "base_temp": 46.0}
+    ),
+    AssetConfig(
+        asset_id="CNC-05",
+        name="CNC Machining Centre 05 (Precision Boring)",
+        type_id="cnc_machine",
+        line_id="LINE-02",
+        criticality="A",
+        make="Makino",
+        model="a51nx",
+        serial_no="MKN-A51-2024-05",
+        position_3d={"x": 10.0, "y": 0.0, "z": 20.0, "rot_y": 0.0},
+        nominal_params={"spindle_rpm": 9500, "power_kw": 13.5, "base_temp": 43.0}
+    ),
+    AssetConfig(
+        asset_id="CNC-06",
+        name="CNC Machining Centre 06 (High-Speed Finishing)",
+        type_id="cnc_machine",
+        line_id="LINE-02",
+        criticality="A",
+        make="Makino",
+        model="a51nx",
+        serial_no="MKN-A51-2024-06",
+        position_3d={"x": 15.0, "y": 0.0, "z": 20.0, "rot_y": 0.0},
+        nominal_params={"spindle_rpm": 11000, "power_kw": 14.5, "base_temp": 47.0}
+    ),
+    AssetConfig(
+        asset_id="CONV-02",
+        name="Line 2 Gantry & Out-Feed Conveyor",
+        type_id="conveyor",
+        line_id="LINE-02",
+        criticality="B",
+        make="FlexLink",
+        model="X85B",
+        serial_no="FLX-CONV-02",
+        position_3d={"x": 10.0, "y": 0.0, "z": 17.5, "rot_y": 90.0},
+        nominal_params={"speed_m_min": 12.5, "power_kw": 3.0}
+    ),
+    AssetConfig(
+        asset_id="ROBOT-02",
+        name="Robot Cell 02 (Inspection & Deburring)",
+        type_id="robot_cell",
+        line_id="LINE-02",
+        criticality="A",
+        make="ABB Robotics",
+        model="IRB 2600",
+        serial_no="ABB-2600-02",
+        position_3d={"x": 10.0, "y": 0.0, "z": 22.5, "rot_y": 180.0},
+        nominal_params={"cycle_time_s": 28.0, "power_kw": 4.2}
+    ),
+    AssetConfig(
+        asset_id="COMP-02",
+        name="Screw Compressor 02 (Standby & Peak Air)",
+        type_id="air_compressor",
+        line_id="LINE-02",
+        criticality="A",
+        make="Atlas Copco",
+        model="GA 37 VSD+",
+        serial_no="ATC-GA37-02",
+        position_3d={"x": 2.0, "y": 0.0, "z": 26.0, "rot_y": 0.0},
+        nominal_params={"discharge_pressure_bar": 7.2, "motor_power_kw": 28.0}
+    ),
+    AssetConfig(
+        asset_id="PUMP-03",
+        name="High-Pressure Coolant Pump 03",
+        type_id="centrifugal_pump",
+        line_id="LINE-02",
+        criticality="B",
+        make="Grundfos",
+        model="CR 32-6",
+        serial_no="GDF-CR32-03",
+        position_3d={"x": 6.0, "y": 0.0, "z": 26.0, "rot_y": 0.0},
+        nominal_params={"flow_m3h": 35.0, "discharge_bar": 7.2, "power_kw": 11.0}
+    ),
+    AssetConfig(
+        asset_id="PUMP-04",
+        name="Line 2 Return & Filtration Pump 04",
+        type_id="centrifugal_pump",
+        line_id="LINE-02",
+        criticality="B",
+        make="Grundfos",
+        model="CR 45-3",
+        serial_no="GDF-CR45-04",
+        position_3d={"x": 8.0, "y": 0.0, "z": 26.0, "rot_y": 0.0},
+        nominal_params={"flow_m3h": 38.0, "discharge_bar": 5.4, "power_kw": 8.6}
+    ),
+    AssetConfig(
+        asset_id="CHILLER-01",
+        name="Central Industrial Water Chiller 01",
+        type_id="chiller",
+        line_id="LINE-02",
+        criticality="A",
+        make="Blue Star / Daikin",
+        model="EWAD-TZ-B",
+        serial_no="DKN-CHIL-01",
+        position_3d={"x": 18.0, "y": 0.0, "z": 26.0, "rot_y": 0.0},
+        nominal_params={"chilled_water_inlet_c": 14.5, "chilled_water_outlet_c": 8.5, "compressor_power_kw": 22.0}
+    ),
+    AssetConfig(
+        asset_id="AHU-02",
+        name="Air Handling Unit 02 (Line 2 & Metrology)",
+        type_id="ahu",
+        line_id="LINE-02",
+        criticality="C",
+        make="Carrier",
+        model="39HQ-12",
+        serial_no="CAR-AHU-02",
+        position_3d={"x": 0.0, "y": 4.0, "z": 20.0, "rot_y": 0.0},
+        nominal_params={"fan_speed_rpm": 1400, "filter_dp_pa": 130.0}
+    ),
+    AssetConfig(
+        asset_id="EM-04",
+        name="Energy Meter 04 (Line 2 Distribution Panel)",
+        type_id="energy_meter",
+        line_id="LINE-02",
+        criticality="B",
+        make="Schneider Electric",
+        model="EasyLogic PM5350",
+        serial_no="SCH-PM5-04",
+        position_3d={"x": 4.0, "y": 1.5, "z": 18.0, "rot_y": 0.0},
+        nominal_params={"voltage_v": 415.0, "current_a": 110.0, "power_factor": 0.93}
+    ),
+    AssetConfig(
+        asset_id="EM-05",
+        name="Energy Meter 05 (Line 2 Utilities)",
+        type_id="energy_meter",
+        line_id="LINE-02",
+        criticality="B",
+        make="Schneider Electric",
+        model="EasyLogic PM5350",
+        serial_no="SCH-PM5-05",
+        position_3d={"x": 2.0, "y": 1.5, "z": 24.0, "rot_y": 0.0},
+        nominal_params={"voltage_v": 414.0, "current_a": 70.0, "power_factor": 0.90}
+    ),
+    AssetConfig(
+        asset_id="EM-06",
+        name="Energy Meter 06 (Chiller & HVAC Distribution)",
+        type_id="energy_meter",
+        line_id="LINE-02",
+        criticality="B",
+        make="Schneider Electric",
+        model="EasyLogic PM5350",
+        serial_no="SCH-PM5-06",
+        position_3d={"x": 16.0, "y": 1.5, "z": 24.0, "rot_y": 0.0},
+        nominal_params={"voltage_v": 415.0, "current_a": 85.0, "power_factor": 0.91}
+    ),
+]
+
+
+ASSET_RELATIONSHIPS = [
+    # Electrical feeding
+    {"from_asset": "EM-01", "to_asset": "EM-02", "kind": "powers"},
+    {"from_asset": "EM-01", "to_asset": "EM-03", "kind": "powers"},
+    {"from_asset": "EM-01", "to_asset": "EM-04", "kind": "powers"},
+    {"from_asset": "EM-01", "to_asset": "EM-05", "kind": "powers"},
+    {"from_asset": "EM-01", "to_asset": "EM-06", "kind": "powers"},
+    {"from_asset": "EM-02", "to_asset": "CNC-01", "kind": "powers"},
+    {"from_asset": "EM-02", "to_asset": "CNC-02", "kind": "powers"},
+    {"from_asset": "EM-02", "to_asset": "CNC-03", "kind": "powers"},
+    {"from_asset": "EM-03", "to_asset": "COMP-01", "kind": "powers"},
+    {"from_asset": "EM-03", "to_asset": "PUMP-01", "kind": "powers"},
+    {"from_asset": "EM-03", "to_asset": "PUMP-02", "kind": "powers"},
+    {"from_asset": "EM-06", "to_asset": "CHILLER-01", "kind": "powers"},
+    {"from_asset": "EM-06", "to_asset": "AHU-01", "kind": "powers"},
+    {"from_asset": "EM-06", "to_asset": "AHU-02", "kind": "powers"},
+
+    # Fluid & Pneumatic feeding
+    {"from_asset": "CHILLER-01", "to_asset": "PUMP-01", "kind": "feeds_coolant"},
+    {"from_asset": "CHILLER-01", "to_asset": "PUMP-03", "kind": "feeds_coolant"},
+    {"from_asset": "PUMP-01", "to_asset": "CNC-01", "kind": "feeds_coolant"},
+    {"from_asset": "PUMP-01", "to_asset": "CNC-02", "kind": "feeds_coolant"},
+    {"from_asset": "PUMP-03", "to_asset": "CNC-04", "kind": "feeds_coolant"},
+    {"from_asset": "PUMP-03", "to_asset": "CNC-05", "kind": "feeds_coolant"},
+    {"from_asset": "COMP-01", "to_asset": "CNC-01", "kind": "feeds_air"},
+    {"from_asset": "COMP-01", "to_asset": "ROBOT-01", "kind": "feeds_air"},
+    {"from_asset": "COMP-02", "to_asset": "CNC-04", "kind": "feeds_air"},
+    {"from_asset": "COMP-02", "to_asset": "ROBOT-02", "kind": "feeds_air"},
+
+    # Material handling flow
+    {"from_asset": "CNC-01", "to_asset": "CONV-01", "kind": "feeds_part"},
+    {"from_asset": "CONV-01", "to_asset": "ROBOT-01", "kind": "feeds_part"},
+    {"from_asset": "ROBOT-01", "to_asset": "CNC-02", "kind": "feeds_part"},
+    {"from_asset": "CNC-04", "to_asset": "CONV-02", "kind": "feeds_part"},
+    {"from_asset": "CONV-02", "to_asset": "ROBOT-02", "kind": "feeds_part"},
+]
