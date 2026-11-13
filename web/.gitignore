@@ -7,9 +7,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# node_modules
 node_modules
-dist
+# dist is tracked for instant zero-dependency cloud container deployments
+# dist
 dist-ssr
+
 *.local
 
 # Editor directories and files

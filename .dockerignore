@@ -1,0 +1,24 @@
+# Git and IDE
+.git
+.github
+.vscode
+.idea
+
+# Python artifacts
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.ruff_cache
+
+# Node artifacts
+web/node_modules
+node_modules
+web/.turbo
+
+# Build and temp directories
+tmp
+scratch

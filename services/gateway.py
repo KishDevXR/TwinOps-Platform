@@ -61,8 +61,8 @@ async def lifespan(app: FastAPI):
                     msg = machine.step(1.0)
                     if msg:
                         # Feed ingest buffer & twin state store
-                        await ingest_service.ingest_canonical(msg)
-                        await state_store.update_from_canonical(msg)
+                        await ingest_service.ingest_message(msg)
+                        await state_store.update_from_telemetry(msg)
                         await alarm_engine.evaluate_telemetry(msg)
                 await asyncio.sleep(1.0)
             except asyncio.CancelledError:

@@ -164,3 +164,7 @@ class TwinStateStore:
                 stale_ids.append(twin.asset_id)
 
         return stale_ids
+
+    # Alias for canonical update
+    update_from_canonical = update_from_telemetry
+

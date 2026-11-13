@@ -96,6 +96,10 @@ class TelemetryIngestService:
         for msg in messages:
             await self.ingest_message(msg)
 
+    # Alias for canonical ingest
+    ingest_canonical = ingest_message
+
+
     async def flush(self) -> int:
         """Flush all currently buffered records to database."""
         async with self._lock:
@@ -133,3 +137,8 @@ class TelemetryIngestService:
                 break
             except Exception as e:
                 logger.error(f"Error in telemetry periodic flush loop: {e}")
+
+
+# Default singleton ingest service instance
+ingest_service = TelemetryIngestService()
+

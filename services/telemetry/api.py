@@ -14,12 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.common.canonical import CanonicalTelemetryMessage
 from services.common.database import IS_SQLITE, TelemetryModel, get_db_session
-from services.telemetry.ingest import TelemetryIngestService
+from services.telemetry.ingest import ingest_service
 
 router = APIRouter(prefix="/api/v1", tags=["telemetry"])
 
-# Global shared ingest service instance
-ingest_service = TelemetryIngestService()
 
 
 class TelemetryPointResponse(BaseModel):
