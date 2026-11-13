@@ -7,7 +7,9 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
     PORT=8000
+
 
 WORKDIR /app
 
@@ -33,4 +35,5 @@ COPY web/dist/ ./web/dist/
 EXPOSE 8000
 
 # Launch the unified gateway (serves all APIs, WebSockets, background simulator, and 3D UI)
-CMD ["python", "services/gateway.py"]
+CMD ["python", "-m", "services.gateway"]
+

@@ -8,10 +8,17 @@ Enables 1-click deployment on 100% free cloud tiers (Render, Hugging Face Spaces
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Ensure application root directory is always on sys.path
+_ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_ROOT_DIR))
+
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
