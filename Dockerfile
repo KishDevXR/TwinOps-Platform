@@ -9,7 +9,7 @@ WORKDIR /app/web
 
 # Install frontend dependencies
 COPY web/package.json web/package-lock.json* ./
-RUN npm ci
+RUN npm ci || npm install
 
 # Copy web source and build production bundle
 COPY web/ ./
@@ -26,19 +26,19 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies (build-essential, curl)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY pyproject.toml ./
+# Install Python dependencies using pinned requirements.txt
+COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir . && \
-    pip install --no-cache-dir numpy scikit-learn scipy python-docx matplotlib
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application source code
+COPY README.md pyproject.toml ./
 COPY simulator/ ./simulator/
 COPY services/ ./services/
 COPY ml/ ./ml/
@@ -49,10 +49,6 @@ COPY --from=frontend-builder /app/web/dist ./web/dist
 
 # Expose standard container web port
 EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/healthz || exit 1
 
 # Launch the unified gateway (serves all APIs, WebSockets, background simulator, and 3D UI)
 CMD ["python", "services/gateway.py"]
