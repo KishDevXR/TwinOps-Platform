@@ -6,13 +6,14 @@ Maps to test cases:
 """
 
 import asyncio
+
 import pytest
 from asyncua import Client as OpcUaClient
 from pymodbus.client import AsyncModbusTcpClient
 
-from simulator.plant import VirtualPlant
 from simulator.modbus_server import ModbusSimulatorServer
 from simulator.opcua_server import OpcUaSimulatorServer
+from simulator.plant import VirtualPlant
 
 
 @pytest.mark.asyncio
@@ -65,10 +66,7 @@ async def test_con_01_opcua_subscribe_and_read():
     Verify OPC UA server exposes CNC tags that match plant simulation.
     """
     plant = VirtualPlant(site="PUNE-01")
-    opc_server = OpcUaSimulatorServer(
-        plant,
-        endpoint="opc.tcp://127.0.0.1:48401/twinops/server/"
-    )
+    opc_server = OpcUaSimulatorServer(plant, endpoint="opc.tcp://127.0.0.1:48401/twinops/server/")
     await opc_server.start()
     await asyncio.sleep(0.2)
     await opc_server.update_nodes_from_plant()
@@ -78,6 +76,7 @@ async def test_con_01_opcua_subscribe_and_read():
 
     try:
         ns = await client.get_namespace_index("http://twinops.plant/pune01")
+        assert ns > 0
         # Check CNC-01 nodes
         temp_node = opc_server.tag_nodes["CNC-01.SpindleTemp"]
         val = await temp_node.read_value()

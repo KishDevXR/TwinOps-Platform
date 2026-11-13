@@ -9,30 +9,36 @@ import argparse
 import asyncio
 import logging
 import signal
-import sys
 
 from simulator.modbus_server import ModbusSimulatorServer
 from simulator.opcua_server import OpcUaSimulatorServer
 from simulator.plant import VirtualPlant
 from simulator.publisher import MqttTelemetryPublisher
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("twinops.simulator.cli")
 
 
 async def main():
     parser = argparse.ArgumentParser(description="TwinOps Virtual Plant Simulator")
     parser.add_argument("--site", default="PUNE-01", help="Plant Site ID (default: PUNE-01)")
-    parser.add_argument("--interval", type=float, default=1.0, help="Tick interval in seconds (default: 1.0)")
+    parser.add_argument(
+        "--interval", type=float, default=1.0, help="Tick interval in seconds (default: 1.0)"
+    )
     parser.add_argument("--mqtt-host", default="localhost", help="MQTT Broker host")
     parser.add_argument("--mqtt-port", type=int, default=1883, help="MQTT Broker port")
-    parser.add_argument("--enable-modbus", action="store_true", help="Start Modbus TCP server (port 5020)")
-    parser.add_argument("--enable-opcua", action="store_true", help="Start OPC UA server (port 48400)")
-    parser.add_argument("--dump-stdout", action="store_true", help="Print generated telemetry to stdout")
-    parser.add_argument("--inject", action="append", help="Inject fault: <asset_id>:<fault_type>[:<severity>]")
+    parser.add_argument(
+        "--enable-modbus", action="store_true", help="Start Modbus TCP server (port 5020)"
+    )
+    parser.add_argument(
+        "--enable-opcua", action="store_true", help="Start OPC UA server (port 48400)"
+    )
+    parser.add_argument(
+        "--dump-stdout", action="store_true", help="Print generated telemetry to stdout"
+    )
+    parser.add_argument(
+        "--inject", action="append", help="Inject fault: <asset_id>:<fault_type>[:<severity>]"
+    )
     args = parser.parse_args()
 
     plant = VirtualPlant(site=args.site)
@@ -47,10 +53,7 @@ async def main():
             plant.inject_fault(aid, ftype, severity=sev)
 
     # Initialize MQTT publisher
-    publisher = MqttTelemetryPublisher(
-        broker_host=args.mqtt_host,
-        broker_port=args.mqtt_port
-    )
+    publisher = MqttTelemetryPublisher(broker_host=args.mqtt_host, broker_port=args.mqtt_port)
     publisher.connect()
 
     # Servers
@@ -61,7 +64,9 @@ async def main():
 
     opcua_server = None
     if args.enable_opcua:
-        opcua_server = OpcUaSimulatorServer(plant, endpoint="opc.tcp://0.0.0.0:48400/twinops/server/")
+        opcua_server = OpcUaSimulatorServer(
+            plant, endpoint="opc.tcp://0.0.0.0:48400/twinops/server/"
+        )
         await opcua_server.start()
 
     stop_event = asyncio.Event()
@@ -84,9 +89,11 @@ async def main():
     async def on_telemetry(msg):
         nonlocal sample_counter
         publisher.publish_telemetry(msg)
-        if args.dump-stdout and sample_counter < 5:
-            print(f"[{msg.ts.strftime('%H:%M:%S')}] {msg.asset_id} ({msg.status.value}): "
-                  f"{ {k: v.v for k, v in list(msg.metrics.items())[:3]} }")
+        if args.dump_stdout and sample_counter < 5:
+            print(
+                f"[{msg.ts.strftime('%H:%M:%S')}] {msg.asset_id} ({msg.status.value}): "
+                f"{ {k: v.v for k, v in list(msg.metrics.items())[:3]} }"
+            )
             sample_counter += 1
 
     try:
@@ -102,9 +109,7 @@ async def main():
         bg_task = asyncio.create_task(background_servers_tick())
 
         await plant.run_continuous(
-            interval_s=args.interval,
-            on_telemetry=on_telemetry,
-            stop_event=stop_event
+            interval_s=args.interval, on_telemetry=on_telemetry, stop_event=stop_event
         )
 
         bg_task.cancel()

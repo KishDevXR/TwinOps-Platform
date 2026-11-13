@@ -7,9 +7,7 @@ Maps to test cases:
 - TC-CON-06 (Data-quality flags & comm loss)
 """
 
-import pytest
-from services.common.canonical import AssetOperationalStatus, DataQuality
-from simulator.config import PILOT_ASSETS, ASSET_RELATIONSHIPS
+from services.common.canonical import DataQuality
 from simulator.plant import VirtualPlant
 
 

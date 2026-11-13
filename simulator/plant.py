@@ -6,10 +6,11 @@ Ref: docs/01_scope_decisions.md §1, docs/05_design_document.md §8
 
 import asyncio
 import logging
-from typing import Any, Callable, Coroutine, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from services.common.canonical import CanonicalTelemetryMessage
-from simulator.config import ASSET_RELATIONSHIPS, PILOT_ASSETS, AssetConfig
+from simulator.config import ASSET_RELATIONSHIPS, PILOT_ASSETS
 from simulator.machine import VirtualMachine
 
 logger = logging.getLogger("twinops.simulator")
@@ -23,7 +24,7 @@ class VirtualPlant:
 
     def __init__(self, site: str = "PUNE-01"):
         self.site = site
-        self.machines: Dict[str, VirtualMachine] = {}
+        self.machines: dict[str, VirtualMachine] = {}
         self.relationships = ASSET_RELATIONSHIPS
         self.is_running = False
 
@@ -33,10 +34,10 @@ class VirtualPlant:
 
         logger.info(f"Initialized VirtualPlant at {site} with {len(self.machines)} assets.")
 
-    def get_machine(self, asset_id: str) -> Optional[VirtualMachine]:
+    def get_machine(self, asset_id: str) -> VirtualMachine | None:
         return self.machines.get(asset_id)
 
-    def list_machines(self) -> List[VirtualMachine]:
+    def list_machines(self) -> list[VirtualMachine]:
         return list(self.machines.values())
 
     def inject_fault(
@@ -44,7 +45,7 @@ class VirtualPlant:
         asset_id: str,
         fault_type: str,
         severity: float = 1.0,
-        params: Optional[Dict[str, Any]] = None
+        params: dict[str, Any] | None = None,
     ):
         """Inject a fault into a specific machine."""
         machine = self.get_machine(asset_id)
@@ -53,7 +54,7 @@ class VirtualPlant:
         machine.inject_fault(fault_type, severity=severity, params=params)
         logger.warning(f"Injected fault '{fault_type}' (sev={severity}) into {asset_id}")
 
-    def clear_fault(self, asset_id: str, fault_type: Optional[str] = None):
+    def clear_fault(self, asset_id: str, fault_type: str | None = None):
         """Clear active fault(s) on a machine."""
         machine = self.get_machine(asset_id)
         if not machine:
@@ -67,12 +68,12 @@ class VirtualPlant:
             m.clear_fault()
         logger.info("Cleared all active faults across plant.")
 
-    def tick(self, dt: float = 1.0) -> List[CanonicalTelemetryMessage]:
+    def tick(self, dt: float = 1.0) -> list[CanonicalTelemetryMessage]:
         """
         Advance the entire plant by dt seconds and collect all generated telemetry messages.
         Filters out machines currently in total communication loss.
         """
-        messages: List[CanonicalTelemetryMessage] = []
+        messages: list[CanonicalTelemetryMessage] = []
         for machine in self.machines.values():
             msg = machine.step(dt=dt)
             if msg is not None:
@@ -82,8 +83,8 @@ class VirtualPlant:
     async def run_continuous(
         self,
         interval_s: float = 1.0,
-        on_telemetry: Optional[Callable[[CanonicalTelemetryMessage], Any]] = None,
-        stop_event: Optional[asyncio.Event] = None
+        on_telemetry: Callable[[CanonicalTelemetryMessage], Any] | None = None,
+        stop_event: asyncio.Event | None = None,
     ):
         """
         Continuously run the plant simulation loop at interval_s until stopped.

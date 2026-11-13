@@ -4,10 +4,10 @@ Exposes CNCs and SCADA tags over OPC UA (TCP 4840 / 48400) to validate
 edge protocol subscriptions (TC-CON-01).
 """
 
-import asyncio
 import logging
-from typing import Dict, Optional
+
 from asyncua import Server, ua
+
 from simulator.plant import VirtualPlant
 
 logger = logging.getLogger("twinops.simulator.opcua")
@@ -23,13 +23,13 @@ class OpcUaSimulatorServer:
         self,
         plant: VirtualPlant,
         endpoint: str = "opc.tcp://0.0.0.0:48400/twinops/server/",
-        server_name: str = "TwinOps SCADA OPC UA Simulator"
+        server_name: str = "TwinOps SCADA OPC UA Simulator",
     ):
         self.plant = plant
         self.endpoint = endpoint
         self.server_name = server_name
         self.server = Server()
-        self.tag_nodes: Dict[str, ua.Node] = {}
+        self.tag_nodes: dict[str, ua.Node] = {}
         self.idx = 0
         self.is_running = False
 
@@ -65,14 +65,28 @@ class OpcUaSimulatorServer:
 
         # Pump 01 tags
         pump_folder = await line1_folder.add_folder(self.idx, "PUMP-01")
-        for tag_name in ["Flow", "DischargePressure", "SuctionPressure", "MotorTemp", "Vibration", "Power"]:
+        for tag_name in [
+            "Flow",
+            "DischargePressure",
+            "SuctionPressure",
+            "MotorTemp",
+            "Vibration",
+            "Power",
+        ]:
             node = await pump_folder.add_variable(self.idx, tag_name, 0.0, ua.VariantType.Double)
             await node.set_writable()
             self.tag_nodes[f"PUMP-01.{tag_name}"] = node
 
         # Compressor 01 tags
         comp_folder = await line1_folder.add_folder(self.idx, "COMP-01")
-        for tag_name in ["DischargePressure", "DischargeTemp", "MotorPower", "FlowRateCFM", "OilDP", "RunHours"]:
+        for tag_name in [
+            "DischargePressure",
+            "DischargeTemp",
+            "MotorPower",
+            "FlowRateCFM",
+            "OilDP",
+            "RunHours",
+        ]:
             node = await comp_folder.add_variable(self.idx, tag_name, 0.0, ua.VariantType.Double)
             await node.set_writable()
             self.tag_nodes[f"COMP-01.{tag_name}"] = node
@@ -89,15 +103,35 @@ class OpcUaSimulatorServer:
             if not msg:
                 continue
             mets = msg.metrics
-            await self._write_val(f"{asset_id}.SpindleTemp", float(mets["spindle_temp_c"].v), ua.VariantType.Double)
-            await self._write_val(f"{asset_id}.Vibration", float(mets["vibration_mm_s"].v), ua.VariantType.Double)
-            await self._write_val(f"{asset_id}.SpindleRPM", float(mets["spindle_rpm"].v), ua.VariantType.Double)
-            await self._write_val(f"{asset_id}.SpindleLoad", float(mets["spindle_load_pct"].v), ua.VariantType.Double)
-            await self._write_val(f"{asset_id}.FeedRate", float(mets["feed_rate_mm_min"].v), ua.VariantType.Double)
-            await self._write_val(f"{asset_id}.CoolantFlow", float(mets["coolant_flow_l_min"].v), ua.VariantType.Double)
-            await self._write_val(f"{asset_id}.PowerKW", float(mets["power_kw"].v), ua.VariantType.Double)
-            await self._write_val(f"{asset_id}.PartCount", int(mets["part_count"].v), ua.VariantType.Int64)
-            await self._write_val(f"{asset_id}.Status", str(msg.status.value), ua.VariantType.String)
+            await self._write_val(
+                f"{asset_id}.SpindleTemp", float(mets["spindle_temp_c"].v), ua.VariantType.Double
+            )
+            await self._write_val(
+                f"{asset_id}.Vibration", float(mets["vibration_mm_s"].v), ua.VariantType.Double
+            )
+            await self._write_val(
+                f"{asset_id}.SpindleRPM", float(mets["spindle_rpm"].v), ua.VariantType.Double
+            )
+            await self._write_val(
+                f"{asset_id}.SpindleLoad", float(mets["spindle_load_pct"].v), ua.VariantType.Double
+            )
+            await self._write_val(
+                f"{asset_id}.FeedRate", float(mets["feed_rate_mm_min"].v), ua.VariantType.Double
+            )
+            await self._write_val(
+                f"{asset_id}.CoolantFlow",
+                float(mets["coolant_flow_l_min"].v),
+                ua.VariantType.Double,
+            )
+            await self._write_val(
+                f"{asset_id}.PowerKW", float(mets["power_kw"].v), ua.VariantType.Double
+            )
+            await self._write_val(
+                f"{asset_id}.PartCount", int(mets["part_count"].v), ua.VariantType.Int64
+            )
+            await self._write_val(
+                f"{asset_id}.Status", str(msg.status.value), ua.VariantType.String
+            )
 
         # Pump 01
         p = self.plant.get_machine("PUMP-01")
@@ -105,12 +139,26 @@ class OpcUaSimulatorServer:
             msg = p.step(dt=0.0)
             if msg:
                 mets = msg.metrics
-                await self._write_val("PUMP-01.Flow", float(mets["flow_m3h"].v), ua.VariantType.Double)
-                await self._write_val("PUMP-01.DischargePressure", float(mets["discharge_bar"].v), ua.VariantType.Double)
-                await self._write_val("PUMP-01.SuctionPressure", float(mets["suction_bar"].v), ua.VariantType.Double)
-                await self._write_val("PUMP-01.MotorTemp", float(mets["motor_temp_c"].v), ua.VariantType.Double)
-                await self._write_val("PUMP-01.Vibration", float(mets["vibration_mm_s"].v), ua.VariantType.Double)
-                await self._write_val("PUMP-01.Power", float(mets["power_kw"].v), ua.VariantType.Double)
+                await self._write_val(
+                    "PUMP-01.Flow", float(mets["flow_m3h"].v), ua.VariantType.Double
+                )
+                await self._write_val(
+                    "PUMP-01.DischargePressure",
+                    float(mets["discharge_bar"].v),
+                    ua.VariantType.Double,
+                )
+                await self._write_val(
+                    "PUMP-01.SuctionPressure", float(mets["suction_bar"].v), ua.VariantType.Double
+                )
+                await self._write_val(
+                    "PUMP-01.MotorTemp", float(mets["motor_temp_c"].v), ua.VariantType.Double
+                )
+                await self._write_val(
+                    "PUMP-01.Vibration", float(mets["vibration_mm_s"].v), ua.VariantType.Double
+                )
+                await self._write_val(
+                    "PUMP-01.Power", float(mets["power_kw"].v), ua.VariantType.Double
+                )
 
         # Comp 01
         c = self.plant.get_machine("COMP-01")
@@ -118,12 +166,30 @@ class OpcUaSimulatorServer:
             msg = c.step(dt=0.0)
             if msg:
                 mets = msg.metrics
-                await self._write_val("COMP-01.DischargePressure", float(mets["discharge_pressure_bar"].v), ua.VariantType.Double)
-                await self._write_val("COMP-01.DischargeTemp", float(mets["discharge_temp_c"].v), ua.VariantType.Double)
-                await self._write_val("COMP-01.MotorPower", float(mets["motor_power_kw"].v), ua.VariantType.Double)
-                await self._write_val("COMP-01.FlowRateCFM", float(mets["flow_rate_cfm"].v), ua.VariantType.Double)
-                await self._write_val("COMP-01.OilDP", float(mets["oil_differential_pressure_bar"].v), ua.VariantType.Double)
-                await self._write_val("COMP-01.RunHours", float(mets["run_hours"].v), ua.VariantType.Double)
+                await self._write_val(
+                    "COMP-01.DischargePressure",
+                    float(mets["discharge_pressure_bar"].v),
+                    ua.VariantType.Double,
+                )
+                await self._write_val(
+                    "COMP-01.DischargeTemp",
+                    float(mets["discharge_temp_c"].v),
+                    ua.VariantType.Double,
+                )
+                await self._write_val(
+                    "COMP-01.MotorPower", float(mets["motor_power_kw"].v), ua.VariantType.Double
+                )
+                await self._write_val(
+                    "COMP-01.FlowRateCFM", float(mets["flow_rate_cfm"].v), ua.VariantType.Double
+                )
+                await self._write_val(
+                    "COMP-01.OilDP",
+                    float(mets["oil_differential_pressure_bar"].v),
+                    ua.VariantType.Double,
+                )
+                await self._write_val(
+                    "COMP-01.RunHours", float(mets["run_hours"].v), ua.VariantType.Double
+                )
 
     async def _write_val(self, key: str, val: any, vtype: ua.VariantType):
         node = self.tag_nodes.get(key)

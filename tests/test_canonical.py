@@ -3,21 +3,22 @@ Tests for Canonical Telemetry Schema, Quality Flags, and Topic Routing.
 Maps to requirement: CON-06 (Data-quality flags), TWN-01 (Twin templates)
 """
 
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
+
 from services.common.canonical import (
+    AssetOperationalStatus,
     CanonicalTelemetryMessage,
     DataQuality,
     MetricValue,
-    AssetOperationalStatus,
 )
 from services.common.mqtt_topics import (
-    telemetry_topic,
-    event_topic,
     gateway_health_topic,
     parse_topic,
+    telemetry_topic,
 )
-from services.common.twin_templates import get_template, TEMPLATES
+from services.common.twin_templates import get_template
 
 
 def test_con_06_data_quality_flags():
@@ -45,7 +46,7 @@ def test_con_06_data_quality_flags():
 
 def test_con_06_canonical_message_structure():
     """Verify serialization and validation of canonical telemetry message."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     msg = CanonicalTelemetryMessage(
         v=1,
         site="PUNE-01",

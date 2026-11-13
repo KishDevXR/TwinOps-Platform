@@ -4,9 +4,8 @@ Publishes canonical telemetry and event payloads to the MQTT broker (EMQX).
 Ref: docs/04_architecture.md §3, docs/05_design_document.md §3
 """
 
-import json
 import logging
-from typing import Optional
+
 import paho.mqtt.client as mqtt
 
 from services.common.canonical import CanonicalEventMessage, CanonicalTelemetryMessage
@@ -25,16 +24,15 @@ class MqttTelemetryPublisher:
         broker_host: str = "localhost",
         broker_port: int = 1883,
         client_id: str = "twinops_simulator_plant",
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        use_tls: bool = False
+        username: str | None = None,
+        password: str | None = None,
+        use_tls: bool = False,
     ):
         self.broker_host = broker_host
         self.broker_port = broker_port
         self.client_id = client_id
         self.client = mqtt.Client(
-            client_id=client_id,
-            callback_api_version=mqtt.CallbackAPIVersion.VERSION2
+            client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
         )
         if username and password:
             self.client.username_pw_set(username, password)
@@ -62,7 +60,9 @@ class MqttTelemetryPublisher:
             self.client.connect(self.broker_host, self.broker_port, keepalive=60)
             self.client.loop_start()
         except Exception as e:
-            logger.warning(f"Could not connect to MQTT broker {self.broker_host}:{self.broker_port}: {e}")
+            logger.warning(
+                f"Could not connect to MQTT broker {self.broker_host}:{self.broker_port}: {e}"
+            )
 
     def disconnect(self):
         """Disconnect and stop client loop."""

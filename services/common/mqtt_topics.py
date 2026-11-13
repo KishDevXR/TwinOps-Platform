@@ -3,8 +3,6 @@ TwinOps MQTT Topic Definitions and Helpers.
 Ref: docs/05_design_document.md §3
 """
 
-from typing import Dict, Optional, Tuple
-
 
 # Topic patterns
 # twinops/{site}/{asset}/telemetry  (edge -> cloud)
@@ -33,7 +31,7 @@ def gateway_config_topic(site: str, gateway_id: str) -> str:
     return f"twinops/{site}/edge/{gateway_id}/config"
 
 
-def parse_topic(topic: str) -> Optional[Dict[str, str]]:
+def parse_topic(topic: str) -> dict[str, str] | None:
     """
     Parse an incoming MQTT topic into its components.
     Returns dict with keys or None if pattern does not match.
@@ -47,21 +45,11 @@ def parse_topic(topic: str) -> Optional[Dict[str, str]]:
     if parts[2] == "edge":
         # twinops/{site}/edge/{gw}/{channel}
         if len(parts) >= 5:
-            return {
-                "type": "gateway",
-                "site": site,
-                "gateway_id": parts[3],
-                "channel": parts[4]
-            }
+            return {"type": "gateway", "site": site, "gateway_id": parts[3], "channel": parts[4]}
     else:
         # twinops/{site}/{asset}/{channel}
         asset_id = parts[2]
         channel = parts[3]
-        return {
-            "type": "asset",
-            "site": site,
-            "asset_id": asset_id,
-            "channel": channel
-        }
+        return {"type": "asset", "site": site, "asset_id": asset_id, "channel": channel}
 
     return None

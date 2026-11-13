@@ -7,8 +7,8 @@ from simulator.machine import VirtualMachine
 from simulator.plant import VirtualPlant
 
 __all__ = [
-    "PILOT_ASSETS",
     "ASSET_RELATIONSHIPS",
+    "PILOT_ASSETS",
     "AssetConfig",
     "VirtualMachine",
     "VirtualPlant",

@@ -6,10 +6,10 @@ edge protocol connectors (TC-CON-02).
 
 import asyncio
 import logging
-from typing import Optional
 
 from pymodbus.server import ModbusTcpServer
 from pymodbus.simulator import DataType, SimData, SimDevice
+
 from simulator.plant import VirtualPlant
 
 logger = logging.getLogger("twinops.simulator.modbus")
@@ -26,15 +26,17 @@ class ModbusSimulatorServer:
         self.plant = plant
         self.host = host
         self.port = port
-        self.server: Optional[ModbusTcpServer] = None
-        self.server_task: Optional[asyncio.Task] = None
+        self.server: ModbusTcpServer | None = None
+        self.server_task: asyncio.Task | None = None
 
         # Build SimDevices
         # 100 registers each
         self.data_em = SimData(address=0, count=100, datatype=DataType.REGISTERS, values=[0] * 100)
         self.dev_em = SimDevice(1, simdata=self.data_em)
 
-        self.data_pump = SimData(address=0, count=100, datatype=DataType.REGISTERS, values=[0] * 100)
+        self.data_pump = SimData(
+            address=0, count=100, datatype=DataType.REGISTERS, values=[0] * 100
+        )
         self.dev_pump = SimDevice(2, simdata=self.data_pump)
 
     async def update_registers_from_plant(self):
@@ -48,12 +50,12 @@ class ModbusSimulatorServer:
             msg = em.step(dt=0.0)
             if msg:
                 m = msg.metrics
-                v_scaled = int(float(m["voltage_v"].v) * 10)         # 415.0V -> 4150
-                i_scaled = int(float(m["current_a"].v) * 10)         # 180.0A -> 1800
-                p_scaled = int(float(m["power_kw"].v) * 100)        # 125.0kW -> 12500
+                v_scaled = int(float(m["voltage_v"].v) * 10)  # 415.0V -> 4150
+                i_scaled = int(float(m["current_a"].v) * 10)  # 180.0A -> 1800
+                p_scaled = int(float(m["power_kw"].v) * 100)  # 125.0kW -> 12500
                 q_scaled = int(float(m["power_reactive_kvar"].v) * 100)
-                pf_scaled = int(float(m["power_factor"].v) * 1000)   # 0.940 -> 940
-                f_scaled = int(float(m["frequency_hz"].v) * 100)     # 50.02Hz -> 5002
+                pf_scaled = int(float(m["power_factor"].v) * 1000)  # 0.940 -> 940
+                f_scaled = int(float(m["frequency_hz"].v) * 100)  # 50.02Hz -> 5002
                 kwh = int(float(m["energy_kwh"].v))
 
                 vals = [
@@ -75,10 +77,10 @@ class ModbusSimulatorServer:
             msg = pump.step(dt=0.0)
             if msg:
                 m = msg.metrics
-                flow_s = int(float(m["flow_m3h"].v) * 10)          # 40.0 m3/h -> 400
-                head_s = int(float(m["discharge_bar"].v) * 100)    # 5.5 bar -> 550
-                temp_s = int(float(m["motor_temp_c"].v) * 10)      # 58.0 C -> 580
-                vib_s = int(float(m["vibration_mm_s"].v) * 100)    # 2.1 mm/s -> 210
+                flow_s = int(float(m["flow_m3h"].v) * 10)  # 40.0 m3/h -> 400
+                head_s = int(float(m["discharge_bar"].v) * 100)  # 5.5 bar -> 550
+                temp_s = int(float(m["motor_temp_c"].v) * 10)  # 58.0 C -> 580
+                vib_s = int(float(m["vibration_mm_s"].v) * 100)  # 2.1 mm/s -> 210
                 pwr_s = int(float(m["power_kw"].v) * 10)
 
                 vals2 = [
@@ -94,8 +96,7 @@ class ModbusSimulatorServer:
         """Start Modbus TCP server in background."""
         logger.info(f"Starting Modbus TCP Simulator server on {self.host}:{self.port}")
         self.server = ModbusTcpServer(
-            context=[self.dev_em, self.dev_pump],
-            address=(self.host, self.port)
+            context=[self.dev_em, self.dev_pump], address=(self.host, self.port)
         )
         self.server_task = asyncio.create_task(self.server.serve_forever())
 

@@ -5,8 +5,8 @@ Ref: docs/05_design_document.md §8
 
 import math
 import random
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from services.common.canonical import (
     AssetOperationalStatus,
@@ -43,10 +43,12 @@ class VirtualMachine:
         self.power_kw = float(config.nominal_params.get("power_kw", 10.0))
 
         # Fault injection state
-        self.active_faults: Dict[str, Dict[str, Any]] = {}
+        self.active_faults: dict[str, dict[str, Any]] = {}
         # e.g. {"overheat": {"severity": 1.0, "time_active": 0.0}}
 
-    def inject_fault(self, fault_type: str, severity: float = 1.0, params: Optional[Dict[str, Any]] = None):
+    def inject_fault(
+        self, fault_type: str, severity: float = 1.0, params: dict[str, Any] | None = None
+    ):
         """
         Inject a specific physical or sensor fault.
         fault_type can be: 'overheat', 'bearing_wear', 'cavitation', 'filter_clog',
@@ -55,10 +57,10 @@ class VirtualMachine:
         self.active_faults[fault_type] = {
             "severity": float(severity),
             "time_active": 0.0,
-            "params": params or {}
+            "params": params or {},
         }
 
-    def clear_fault(self, fault_type: Optional[str] = None):
+    def clear_fault(self, fault_type: str | None = None):
         """Clear a specific active fault or all faults if fault_type is None."""
         if fault_type:
             self.active_faults.pop(fault_type, None)
@@ -70,14 +72,14 @@ class VirtualMachine:
         self.status = status
         self.time_in_state = 0.0
 
-    def step(self, dt: float = 1.0) -> Optional[CanonicalTelemetryMessage]:
+    def step(self, dt: float = 1.0) -> CanonicalTelemetryMessage | None:
         """
         Advance physics simulation by dt seconds and generate Canonical Telemetry Message.
         Returns None if asset is in total communication blackout.
         """
         self.uptime_seconds += int(dt)
         self.time_in_state += dt
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Advance active fault timers
         for fault in self.active_faults.values():
@@ -122,19 +124,14 @@ class VirtualMachine:
             self.run_hours += dt / 3600.0
 
         return CanonicalTelemetryMessage(
-            v=1,
-            site=self.site,
-            asset_id=self.asset_id,
-            ts=now,
-            metrics=metrics,
-            status=status
+            v=1, site=self.site, asset_id=self.asset_id, ts=now, metrics=metrics, status=status
         )
 
     # -------------------------------------------------------------
     # Type-Specific Physics-Lite Models
     # -------------------------------------------------------------
 
-    def _step_cnc(self, dt: float) -> tuple[Dict[str, MetricValue], AssetOperationalStatus]:
+    def _step_cnc(self, dt: float) -> tuple[dict[str, MetricValue], AssetOperationalStatus]:
         nominal_rpm = float(self.config.nominal_params.get("spindle_rpm", 8000))
         base_power = float(self.config.nominal_params.get("power_kw", 12.0))
 
@@ -184,16 +181,22 @@ class VirtualMachine:
 
         # First order thermal lag: dT/dt = (T_target - T) / tau
         tau_temp = 20.0  # 20 second thermal time constant
-        self.temperature += (target_temp - self.temperature) * (dt / tau_temp) + random.uniform(-0.05, 0.05)
+        self.temperature += (target_temp - self.temperature) * (dt / tau_temp) + random.uniform(
+            -0.05, 0.05
+        )
 
         # Vibration dynamic response
         tau_vib = 3.0
-        self.vibration += (target_vib - self.vibration) * (dt / tau_vib) + random.uniform(-0.08, 0.08)
+        self.vibration += (target_vib - self.vibration) * (dt / tau_vib) + random.uniform(
+            -0.08, 0.08
+        )
         self.vibration = max(0.1, self.vibration)
 
         # Coolant delivery
         coolant_temp = 24.0 + random.uniform(-0.3, 0.3)
-        coolant_flow = 14.5 + random.uniform(-0.5, 0.5) if status == AssetOperationalStatus.RUNNING else 0.0
+        coolant_flow = (
+            14.5 + random.uniform(-0.5, 0.5) if status == AssetOperationalStatus.RUNNING else 0.0
+        )
 
         # Axis positions (smooth simulated table movement)
         pos_x = 250.0 + 120.0 * math.sin(self.uptime_seconds * 0.2)
@@ -216,7 +219,7 @@ class VirtualMachine:
         }
         return metrics, status
 
-    def _step_pump(self, dt: float) -> tuple[Dict[str, MetricValue], AssetOperationalStatus]:
+    def _step_pump(self, dt: float) -> tuple[dict[str, MetricValue], AssetOperationalStatus]:
         nominal_flow = float(self.config.nominal_params.get("flow_m3h", 40.0))
         nominal_head = float(self.config.nominal_params.get("discharge_bar", 5.5))
         base_power = float(self.config.nominal_params.get("power_kw", 9.0))
@@ -240,16 +243,20 @@ class VirtualMachine:
         if "cavitation" in self.active_faults:
             sev = self.active_faults["cavitation"]["severity"]
             suction = max(0.01, suction - 1.15 * sev)  # suction loss
-            discharge *= (1.0 - 0.35 * sev)
-            flow *= (1.0 - 0.4 * sev)
+            discharge *= 1.0 - 0.35 * sev
+            flow *= 1.0 - 0.4 * sev
             # Cavitation causes wild high frequency vibration oscillations
             target_vib += 4.8 * sev + random.uniform(-1.5, 1.5)
 
         tau_temp = 25.0
-        self.temperature += (target_temp - self.temperature) * (dt / tau_temp) + random.uniform(-0.04, 0.04)
+        self.temperature += (target_temp - self.temperature) * (dt / tau_temp) + random.uniform(
+            -0.04, 0.04
+        )
 
         tau_vib = 2.0
-        self.vibration += (target_vib - self.vibration) * (dt / tau_vib) + random.uniform(-0.06, 0.06)
+        self.vibration += (target_vib - self.vibration) * (dt / tau_vib) + random.uniform(
+            -0.06, 0.06
+        )
         self.vibration = max(0.1, self.vibration)
 
         status = AssetOperationalStatus.RUNNING if power > 1.0 else AssetOperationalStatus.STOPPED
@@ -265,7 +272,7 @@ class VirtualMachine:
         }
         return metrics, status
 
-    def _step_compressor(self, dt: float) -> tuple[Dict[str, MetricValue], AssetOperationalStatus]:
+    def _step_compressor(self, dt: float) -> tuple[dict[str, MetricValue], AssetOperationalStatus]:
         nom_pressure = float(self.config.nominal_params.get("discharge_pressure_bar", 7.4))
         nom_power = float(self.config.nominal_params.get("motor_power_kw", 30.0))
 
@@ -280,13 +287,15 @@ class VirtualMachine:
         if "air_leak" in self.active_faults:
             sev = self.active_faults["air_leak"]["severity"]
             pressure -= 1.8 * sev  # drops below 6.0 bar
-            power *= (1.0 + 0.25 * sev)  # compressor runs at 100% capacity continuously
+            power *= 1.0 + 0.25 * sev  # compressor runs at 100% capacity continuously
 
         if "filter_clog" in self.active_faults:
             sev = self.active_faults["filter_clog"]["severity"]
             oil_dp += 1.1 * sev  # oil filter differential pressure alarm
 
-        self.temperature += (target_temp - self.temperature) * (dt / 30.0) + random.uniform(-0.05, 0.05)
+        self.temperature += (target_temp - self.temperature) * (dt / 30.0) + random.uniform(
+            -0.05, 0.05
+        )
         status = AssetOperationalStatus.RUNNING
 
         metrics = {
@@ -299,7 +308,7 @@ class VirtualMachine:
         }
         return metrics, status
 
-    def _step_robot(self, dt: float) -> tuple[Dict[str, MetricValue], AssetOperationalStatus]:
+    def _step_robot(self, dt: float) -> tuple[dict[str, MetricValue], AssetOperationalStatus]:
         nom_cycle = float(self.config.nominal_params.get("cycle_time_s", 30.0))
         power = 3.5 + 1.2 * math.sin(self.uptime_seconds * 0.3) + random.uniform(-0.1, 0.1)
         j1 = 44.0 + 3.0 * math.sin(self.uptime_seconds * 0.05)
@@ -308,7 +317,9 @@ class VirtualMachine:
         grip_pressure = 6.2 + random.uniform(-0.1, 0.1)
 
         metrics = {
-            "cycle_time_s": MetricValue(v=round(nom_cycle + random.uniform(-1.0, 1.0), 1), q=DataQuality.GOOD),
+            "cycle_time_s": MetricValue(
+                v=round(nom_cycle + random.uniform(-1.0, 1.0), 1), q=DataQuality.GOOD
+            ),
             "power_kw": MetricValue(v=round(power, 2), q=DataQuality.GOOD),
             "joint_j1_temp_c": MetricValue(v=round(j1, 1), q=DataQuality.GOOD),
             "joint_j2_temp_c": MetricValue(v=round(j2, 1), q=DataQuality.GOOD),
@@ -318,8 +329,10 @@ class VirtualMachine:
         }
         return metrics, AssetOperationalStatus.RUNNING
 
-    def _step_conveyor(self, dt: float) -> tuple[Dict[str, MetricValue], AssetOperationalStatus]:
-        speed = float(self.config.nominal_params.get("speed_m_min", 14.0)) + random.uniform(-0.2, 0.2)
+    def _step_conveyor(self, dt: float) -> tuple[dict[str, MetricValue], AssetOperationalStatus]:
+        speed = float(self.config.nominal_params.get("speed_m_min", 14.0)) + random.uniform(
+            -0.2, 0.2
+        )
         power = float(self.config.nominal_params.get("power_kw", 3.2)) + random.uniform(-0.1, 0.1)
         current = 8.5 + random.uniform(-0.3, 0.3)
         temp = 48.0 + random.uniform(-0.2, 0.2)
@@ -334,7 +347,7 @@ class VirtualMachine:
         }
         return metrics, AssetOperationalStatus.RUNNING
 
-    def _step_chiller(self, dt: float) -> tuple[Dict[str, MetricValue], AssetOperationalStatus]:
+    def _step_chiller(self, dt: float) -> tuple[dict[str, MetricValue], AssetOperationalStatus]:
         inlet_c = 14.2 + random.uniform(-0.2, 0.2)
         outlet_c = 8.4 + random.uniform(-0.2, 0.2)
         suction_bar = 4.2 + random.uniform(-0.1, 0.1)
@@ -352,7 +365,7 @@ class VirtualMachine:
         }
         return metrics, AssetOperationalStatus.RUNNING
 
-    def _step_ahu(self, dt: float) -> tuple[Dict[str, MetricValue], AssetOperationalStatus]:
+    def _step_ahu(self, dt: float) -> tuple[dict[str, MetricValue], AssetOperationalStatus]:
         temp = 21.2 + random.uniform(-0.3, 0.3)
         dp = float(self.config.nominal_params.get("filter_dp_pa", 140.0)) + random.uniform(-3, 3)
         rpm = float(self.config.nominal_params.get("fan_speed_rpm", 1420)) + random.uniform(-10, 10)
@@ -362,7 +375,7 @@ class VirtualMachine:
         if "filter_clog" in self.active_faults:
             sev = self.active_faults["filter_clog"]["severity"]
             dp += 220.0 * sev  # drives filter dp > 360 Pa (reaches HI / HI_HI)
-            flow *= (1.0 - 0.25 * sev)
+            flow *= 1.0 - 0.25 * sev
 
         metrics = {
             "supply_air_temp_c": MetricValue(v=round(temp, 2), q=DataQuality.GOOD),
@@ -373,17 +386,25 @@ class VirtualMachine:
         }
         return metrics, AssetOperationalStatus.RUNNING
 
-    def _step_energy_meter(self, dt: float) -> tuple[Dict[str, MetricValue], AssetOperationalStatus]:
-        voltage = float(self.config.nominal_params.get("voltage_v", 415.0)) + random.uniform(-2.5, 2.5)
-        current = float(self.config.nominal_params.get("current_a", 100.0)) + random.uniform(-4.0, 4.0)
-        pf = float(self.config.nominal_params.get("power_factor", 0.92)) + random.uniform(-0.01, 0.01)
+    def _step_energy_meter(
+        self, dt: float
+    ) -> tuple[dict[str, MetricValue], AssetOperationalStatus]:
+        voltage = float(self.config.nominal_params.get("voltage_v", 415.0)) + random.uniform(
+            -2.5, 2.5
+        )
+        current = float(self.config.nominal_params.get("current_a", 100.0)) + random.uniform(
+            -4.0, 4.0
+        )
+        pf = float(self.config.nominal_params.get("power_factor", 0.92)) + random.uniform(
+            -0.01, 0.01
+        )
 
         active_kw = (math.sqrt(3) * voltage * current * pf) / 1000.0
         reactive_kvar = active_kw * math.tan(math.acos(min(1.0, max(0.1, pf))))
         freq = 50.02 + random.uniform(-0.04, 0.04)
 
         # Accumulate kWh
-        self.power_kw += (active_kw * dt / 3600.0)
+        self.power_kw += active_kw * dt / 3600.0
 
         metrics = {
             "voltage_v": MetricValue(v=round(voltage, 1), q=DataQuality.GOOD),
@@ -396,7 +417,7 @@ class VirtualMachine:
         }
         return metrics, AssetOperationalStatus.RUNNING
 
-    def _step_generic(self, dt: float) -> tuple[Dict[str, MetricValue], AssetOperationalStatus]:
+    def _step_generic(self, dt: float) -> tuple[dict[str, MetricValue], AssetOperationalStatus]:
         return {
             "power_kw": MetricValue(v=round(self.power_kw, 2), q=DataQuality.GOOD)
         }, AssetOperationalStatus.RUNNING
