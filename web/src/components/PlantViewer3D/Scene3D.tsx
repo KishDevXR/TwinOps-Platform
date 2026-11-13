@@ -1,11 +1,33 @@
 import React, { useState, useRef } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Html } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { LiveAssetTwin, VisualizationLayer } from '../../types/twin'
 import { FactoryFloor } from './FactoryFloor'
-import { MachineMesh } from './ParametricMeshes'
-import { Camera, Eye, Layers } from 'lucide-react'
+import { MachineMesh, assetXZ } from './ParametricMeshes'
+import { Logistics3D, LogisticsHud } from './Logistics'
+import { DATASET_CREDITS, PALETTE } from '../../constants/plantLayout'
+import { Camera, Database, Eye, Layers } from 'lucide-react'
+
+/** Keeps the camera on a selected forklift as it drives (WareTrack-style follow camera). */
+const FollowForklift: React.FC<{
+  asset: LiveAssetTwin | null
+  controls: React.RefObject<OrbitControlsImpl | null>
+}> = ({ asset, controls }) => {
+  useFrame((_, delta) => {
+    const c = controls.current
+    if (!c || asset?.type_id !== 'forklift') return
+    const [x, z] = assetXZ(asset)
+    const k = 1 - Math.exp(-3 * delta)
+    const dx = (x - c.target.x) * k
+    const dz = (z - c.target.z) * k
+    c.target.x += dx
+    c.target.z += dz
+    c.object.position.x += dx
+    c.object.position.z += dz
+  })
+  return null
+}
 
 interface Scene3DProps {
   assets: Record<string, LiveAssetTwin>
@@ -21,70 +43,78 @@ export const Scene3D: React.FC<Scene3DProps> = ({
   activeLayer,
 }) => {
   const [hoveredAssetId, setHoveredAssetId] = useState<string | null>(null)
+  const [showCredits, setShowCredits] = useState(false)
   const controlsRef = useRef<OrbitControlsImpl>(null)
 
   const hoveredAsset = hoveredAssetId ? assets[hoveredAssetId] : null
 
   // Camera preset handler
-  const setCameraPreset = (view: 'overview' | 'line1' | 'line2' | 'utilities' | 'top') => {
+  const setCameraPreset = (view: 'overview' | 'line1' | 'line2' | 'utilities' | 'docks' | 'top') => {
     if (!controlsRef.current) return
     const controls = controlsRef.current
 
     switch (view) {
       case 'overview':
-        controls.object.position.set(22, 24, 38)
-        controls.target.set(12, 1, 14)
+        controls.object.position.set(60, 60, 100)
+        controls.target.set(38, 0, 16)
         break
       case 'line1':
-        controls.object.position.set(12, 12, 16)
-        controls.target.set(12, 1, 6)
+        controls.object.position.set(34, 22, 40)
+        controls.target.set(22, 1, 9)
         break
       case 'line2':
-        controls.object.position.set(12, 12, 32)
-        controls.target.set(12, 1, 21)
+        controls.object.position.set(34, 22, 55)
+        controls.target.set(22, 1, 24)
         break
       case 'utilities':
-        controls.object.position.set(8, 10, 20)
-        controls.target.set(8, 1, 12)
+        controls.object.position.set(34, 16, 58)
+        controls.target.set(28, 1, 33)
+        break
+      case 'docks':
+        controls.object.position.set(8, 24, 48)
+        controls.target.set(-2, 1, 10)
         break
       case 'top':
-        controls.object.position.set(12, 45, 14.1)
-        controls.target.set(12, 0, 14)
+        controls.object.position.set(28, 110, 18.1)
+        controls.target.set(28, 0, 18)
         break
     }
     controls.update()
   }
 
   return (
-    <div className="relative w-full h-full bg-slate-950 overflow-hidden select-none" data-testid="scene-3d-container">
+    <div className="relative w-full h-full bg-[#e9ecf8] overflow-hidden select-none" data-testid="scene-3d-container">
       {/* 3D Canvas */}
       <Canvas
+        flat
         shadows
-        camera={{ position: [22, 24, 38], fov: 45 }}
+        camera={{ position: [60, 60, 100], fov: 30, far: 600 }}
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         dpr={[1, 2]}
       >
-        {/* Lights */}
-        <ambientLight intensity={0.6} />
+        <color attach="background" args={[PALETTE.sky]} />
+        {/* Soft daylight, WareTrack-style */}
+        <ambientLight intensity={1.5} />
+        <hemisphereLight args={['#ffffff', '#c9d0f0', 0.5]} />
         <directionalLight
-          position={[25, 40, 20]}
-          intensity={1.2}
+          position={[50, 70, 60]}
+          intensity={1.1}
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
-          shadow-camera-far={80}
-          shadow-camera-left={-25}
-          shadow-camera-right={25}
-          shadow-camera-top={25}
-          shadow-camera-bottom={-25}
+          shadow-camera-far={220}
+          shadow-camera-left={-70}
+          shadow-camera-right={70}
+          shadow-camera-top={70}
+          shadow-camera-bottom={-70}
         />
-        <pointLight position={[10, 8, 10]} intensity={0.5} color="#38bdf8" />
-        <pointLight position={[10, 8, 22]} intensity={0.5} color="#38bdf8" />
 
         {/* Factory Floor */}
         <FactoryFloor />
+        <Logistics3D assets={assets} />
+        <FollowForklift asset={selectedAssetId ? assets[selectedAssetId] ?? null : null} controls={controlsRef} />
 
-        {/* 25 Asset Meshes */}
+        {/* Asset meshes */}
         {Object.values(assets).map((asset) => (
           <MachineMesh
             key={asset.asset_id}
@@ -110,9 +140,9 @@ export const Scene3D: React.FC<Scene3DProps> = ({
         {hoveredAsset && (
           <Html
             position={[
-              hoveredAsset.position.x,
+              assetXZ(hoveredAsset)[0],
               hoveredAsset.position.y + 3.2,
-              hoveredAsset.position.z,
+              assetXZ(hoveredAsset)[1],
             ]}
             center
             distanceFactor={24}
@@ -160,9 +190,10 @@ export const Scene3D: React.FC<Scene3DProps> = ({
         <OrbitControls
           ref={controlsRef}
           makeDefault
+          target={[38, 0, 16]}
           maxPolarAngle={Math.PI / 2.05}
-          minDistance={4}
-          maxDistance={70}
+          minDistance={6}
+          maxDistance={260}
           dampingFactor={0.08}
         />
       </Canvas>
@@ -201,6 +232,13 @@ export const Scene3D: React.FC<Scene3DProps> = ({
           Utilities
         </button>
         <button
+          onClick={() => setCameraPreset('docks')}
+          className="px-2.5 py-1 rounded hover:bg-slate-800 hover:text-white transition"
+          title="Receiving dock and yard"
+        >
+          Docks
+        </button>
+        <button
           onClick={() => setCameraPreset('top')}
           className="px-2.5 py-1 rounded hover:bg-slate-800 hover:text-white transition"
           title="Top-down 2D floorplan view"
@@ -230,7 +268,38 @@ export const Scene3D: React.FC<Scene3DProps> = ({
           <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
           Offline / Stale
         </span>
+        <button
+          onClick={() => setShowCredits((v) => !v)}
+          className="flex items-center gap-1 pl-3 border-l border-slate-800 text-sky-400 hover:text-white transition"
+          data-testid="btn-data-credits"
+        >
+          <Database className="w-3.5 h-3.5" /> Data credits
+        </button>
       </div>
+
+      <LogisticsHud assets={assets} />
+
+      {/* Dataset attribution (CC BY 4.0) */}
+      {showCredits && (
+        <div
+          className="absolute bottom-14 left-4 z-20 w-[420px] rounded-xl bg-white/95 border border-indigo-100 shadow-xl p-3 text-xs text-slate-700"
+          data-testid="data-credits"
+        >
+          <div className="font-bold text-slate-900 mb-1">Open datasets replayed by the simulator</div>
+          {DATASET_CREDITS.map((d) => (
+            <div key={d.title} className="py-1 border-t border-slate-100">
+              <div className="font-semibold">
+                {d.title} <span className="font-normal text-slate-500">· {d.usedFor} · {d.licence}</span>
+              </div>
+              <div className="text-slate-500">{d.credit}</div>
+            </div>
+          ))}
+          <div className="pt-1 border-t border-slate-100 text-slate-500">
+            Values are scaled to each asset's nominal rating. Robots, conveyors, AHUs, the chiller and
+            energy meters use physics-lite models.
+          </div>
+        </div>
+      )}
     </div>
   )
 }

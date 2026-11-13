@@ -49,16 +49,16 @@ async def test_ast_01_site_tree_hierarchy():
         assert res.status_code == 200
         data = res.json()
         assert data["id"] == "PUNE-01"
-        assert len(data["areas"]) == 1
+        assert len(data["areas"]) == 2  # machining + logistics
 
-        area = data["areas"][0]
+        area = next(a for a in data["areas"] if a["id"] == "AREA-MACHINING")
         assert area["id"] == "AREA-MACHINING"
         assert len(area["lines"]) == 2
 
         line1 = next(l for l in area["lines"] if l["id"] == "LINE-01")
         line2 = next(l for l in area["lines"] if l["id"] == "LINE-02")
 
-        # Line 1: 12 assets, Line 2: 13 assets = 25 total
+        # Line 1: 12 assets, Line 2: 13 assets = 25 machines (logistics area holds 4 more)
         total_assets = len(line1["assets"]) + len(line2["assets"])
         assert total_assets == 25
 
@@ -66,7 +66,7 @@ async def test_ast_01_site_tree_hierarchy():
         cnc1 = next(a for a in line1["assets"] if a["id"] == "CNC-01")
         assert cnc1["type_id"] == "cnc_machine"
         assert cnc1["criticality"] == "A"
-        assert cnc1["position"]["x"] == 5.0
+        assert cnc1["position"]["x"] == 16.0
 
 
 @pytest.mark.asyncio

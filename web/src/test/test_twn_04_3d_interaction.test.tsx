@@ -5,7 +5,7 @@ import { PILOT_ASSETS_INITIAL } from '../constants/pilotAssets'
 import type { AlarmItem } from '../types/twin'
 
 describe('TC-TWN-04: 3D Asset Interaction and Side Panel', () => {
-  const sampleAsset = PILOT_ASSETS_INITIAL['CNC-01']
+  const sampleAsset = { ...PILOT_ASSETS_INITIAL['CNC-01'], derived: { oee_pct: 88.5 } }
   const sampleAlarms: AlarmItem[] = [
     {
       id: 'ALM-1',
@@ -35,13 +35,15 @@ describe('TC-TWN-04: 3D Asset Interaction and Side Panel', () => {
 
     // Verify Asset ID & Header
     expect(screen.getByTestId('panel-asset-id')).toHaveTextContent('CNC-01')
-    expect(screen.getByTestId('panel-asset-name')).toHaveTextContent('CNC Milling Center 01')
+    expect(screen.getByTestId('panel-asset-name')).toHaveTextContent('CNC Machining Centre 01 (Roughing)')
     expect(screen.getByTestId('panel-asset-status')).toHaveTextContent('RUNNING')
 
     // Verify Live Metrics Tab
-    expect(screen.getByTestId('metric-row-spindle_speed_rpm')).toBeInTheDocument()
-    expect(screen.getByText('8520.00')).toBeInTheDocument()
-    expect(screen.getByText('rpm')).toBeInTheDocument()
+    expect(screen.getByTestId('metric-row-spindle_rpm')).toBeInTheDocument()
+    expect(screen.getByTestId('metric-row-spindle_rpm')).toHaveTextContent(
+      Number(sampleAsset.metrics.spindle_rpm.v).toFixed(2),
+    )
+    expect(screen.getByTestId('metric-row-spindle_rpm')).toHaveTextContent('RPM')
 
     // Switch to Derived KPIs Tab
     const kpiTabButton = screen.getByText('Derived KPIs')

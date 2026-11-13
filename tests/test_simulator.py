@@ -12,9 +12,9 @@ from simulator.plant import VirtualPlant
 
 
 def test_ast_01_pilot_asset_inventory():
-    """TC-AST-01: Verify all 25 pilot assets across Line 1 and Line 2 are present."""
+    """TC-AST-01: Verify all 29 pilot assets (25 machines + 4 logistics) are present."""
     plant = VirtualPlant(site="PUNE-01")
-    assert len(plant.machines) == 25
+    assert len(plant.machines) == 29
 
     # Check breakdown per scope decision
     cncs = [m for m in plant.machines.values() if m.type_id == "cnc_machine"]
@@ -112,7 +112,7 @@ def test_con_06_comm_loss_and_sensor_fault():
     msg_comm_loss = cnc.step(dt=1.0)
     assert msg_comm_loss is None
 
-    # Whole plant tick should now have 24 messages instead of 25
+    # Whole plant tick should now have 28 messages instead of 29
     messages = plant.tick(dt=1.0)
-    assert len(messages) == 24
+    assert len(messages) == 28
     assert not any(m.asset_id == "CNC-01" for m in messages)

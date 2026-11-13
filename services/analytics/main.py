@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 
 import uvicorn
 from fastapi import FastAPI
@@ -13,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from services.analytics.api import router as analytics_router
 from services.analytics.engine import analytics_engine
+from services.telemetry.mqtt_consumer import TelemetryMqttConsumer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,9 +29,16 @@ async def lifespan(app: FastAPI):
     # Pre-initialize states for pilot rotating equipment (Pumps, Spindles, Compressors)
     for asset_id in ["PUMP-01", "PUMP-02", "CNC-01", "CNC-02", "COMP-01"]:
         analytics_engine._get_or_create_state(asset_id)
+    # Feed live telemetry into the anomaly / RUL models (same consumer as the ingest service)
+    mqtt_consumer = TelemetryMqttConsumer(
+        SimpleNamespace(ingest_message=analytics_engine.ingest_telemetry),
+        client_id="twinops_analytics_service",
+    )
+    mqtt_consumer.start()
     logger.info("Analytics models loaded and ready.")
     yield
     logger.info("Shutting down Analytics service...")
+    mqtt_consumer.stop()
 
 
 app = FastAPI(

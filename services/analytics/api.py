@@ -4,17 +4,21 @@ TwinOps Analytics REST API Endpoints (ANL-01, ANL-02, ANL-03, ANL-05)
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from services.analytics.engine import analytics_engine
+from services.analytics.logistics import LOGISTICS_METRICS, calculate_logistics_kpis
 from services.analytics.oee import (
     OEEResult,
     calculate_downtime_pareto,
     calculate_oee,
 )
+from services.common.database import TelemetryModel, async_session_factory
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
@@ -128,3 +132,22 @@ async def get_downtime_pareto(req: DowntimeParetoRequest) -> list[dict[str, Any]
     """Compute 80/20 downtime Pareto distribution."""
     events = [e.model_dump() for e in req.events]
     return calculate_downtime_pareto(events)
+
+
+@router.get("/logistics/kpis")
+async def get_logistics_kpis(hours: float = Query(8.0, gt=0, le=168)) -> dict[str, Any]:
+    """Dock and forklift KPIs over the last `hours` (LOG-03)."""
+    since = datetime.now(UTC) - timedelta(hours=hours)
+    async with async_session_factory() as session:
+        res = await session.execute(
+            select(
+                TelemetryModel.ts,
+                TelemetryModel.asset_id,
+                TelemetryModel.metric,
+                TelemetryModel.value,
+            )
+            .where(TelemetryModel.metric.in_(LOGISTICS_METRICS), TelemetryModel.ts >= since)
+            .order_by(TelemetryModel.ts)
+        )
+        rows = [tuple(r) for r in res.all()]
+    return {"period_hours": hours, "assets": calculate_logistics_kpis(rows)}

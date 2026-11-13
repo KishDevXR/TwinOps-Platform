@@ -30,6 +30,7 @@ export interface LiveAssetTwin {
   last_seen: string
   is_stale: boolean
   anomaly_score?: number
+  status_reasons?: string[] // why the twin service chose the status colour
 }
 
 export interface AlarmItem {

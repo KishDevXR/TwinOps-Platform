@@ -55,18 +55,21 @@ class TwinMqttConsumer:
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
             telemetry_msg = CanonicalTelemetryMessage.model_validate(payload)
-            try:
-                loop = asyncio.get_running_loop()
+            # paho calls this on its own thread: hand the message to the service's event loop
+            if self._loop:
                 asyncio.run_coroutine_threadsafe(
-                    self.state_store.update_from_telemetry(telemetry_msg), loop
+                    self.state_store.update_from_telemetry(telemetry_msg), self._loop
                 )
-            except RuntimeError:
-                pass
         except Exception as e:
             logger.error(f"Failed to process live twin payload: {e}")
 
     def start(self):
-        """Start consumer loop in background thread."""
+        """Start consumer loop in background thread. Call from the service's event loop."""
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._loop = None
+            logger.warning("No running event loop: MQTT messages will not update twins.")
         try:
             self.client.connect(self.broker_host, self.broker_port, keepalive=60)
             self.client.loop_start()

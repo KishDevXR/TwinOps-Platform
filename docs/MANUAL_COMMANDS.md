@@ -8,7 +8,7 @@ This runbook provides complete, copy-pasteable manual commands to configure, sta
 
 | Service / Component | Protocol / Port | Entrypoint | Description |
 | :--- | :--- | :--- | :--- |
-| **Virtual Plant Simulator** | OT / Internal | `simulator.cli` | Physics-lite plant simulator (25 assets, ~400 tags) |
+| **Virtual Plant Simulator** | OT / Internal | `simulator.cli` | Physics-lite plant simulator (29 assets, ~400 tags) |
 | **Modbus TCP Server** | TCP `5020` | `simulator.modbus_server` | Modbus holding register simulator |
 | **OPC UA Server** | TCP `48400` | `simulator.opcua_server` | OPC UA server with industrial tag hierarchy |
 | **Telemetry Ingest Service** | HTTP `8001` | `services.telemetry.main` | High-throughput batch ingest & time-series query API |
@@ -83,7 +83,7 @@ cd ..
 To run the full stack manually, open separate terminal windows for each service. Ensure the virtual environment is activated in each terminal.
 
 ### 3.1 Virtual Plant Simulator (Machine Generator)
-Generates real-time synthetic physics telemetry for 25 machines across 2 lines.
+Generates real-time telemetry for 29 assets: 25 machines across 2 lines, plus 2 loading docks and 2 forklifts.
 
 ```powershell
 # Windows (PowerShell)
@@ -94,6 +94,13 @@ Generates real-time synthetic physics telemetry for 25 machines across 2 lines.
 
 # Run with field protocols enabled (Modbus port 5020, OPC UA port 48400)
 .venv\Scripts\python.exe -m simulator.cli --site PUNE-01 --enable-modbus --enable-opcua
+
+# Replay open datasets instead of synthetic signals (download once, about 740 MB)
+.venv\Scripts\python.exe -m simulator.datasets fetch
+.venv\Scripts\python.exe -m simulator.cli --site PUNE-01 --replay-dir data/datasets
+
+# Regenerate the web viewer's offline asset snapshot after editing simulator/config.py
+.venv\Scripts\python.exe -m simulator.export_web > web/src/constants/pilotAssets.ts
 ```
 
 ```bash

@@ -202,7 +202,7 @@ Mobile (PWA)
 
 My jobs, scan QR, checklist, photo, offline sync
 
-Status colours: green = running, amber = warning/idle, red = alarm/fault, grey = offline/stale. Dark theme default for control rooms.
+Status colours: green = running, amber = warning/idle, red = alarm/fault, grey = offline/stale. Dark theme default for control rooms; the 3D scene itself uses a light, low-poly cutaway style (bright floor, white walls with blue trim, pallet racks, trucks and forklifts) so status colours stand out.
 
 7. 3D replica pipeline
 
@@ -214,9 +214,15 @@ Scene file scene.json maps asset_id → model, position, rotation.
 
 Viewer: React-Three-Fiber, instancing for repeated machines, LOD, target 60 fps on a mid-range laptop.
 
+Pilot layout (metres; building 56 × 36; x = west → east, z = back wall → front): receiving dock on the west wall with raw-casting racks; Line 1 at z ≈ 9 and Line 2 at z ≈ 24, either side of a central forklift aisle at z = 16.5; wash and inspection east of the lines; finished-goods racks and the shipping dock on the east wall; utility room (compressors, pumps, chiller) and MCC room (energy meters) along the front. Asset positions live in simulator/config.py; web/src/constants/pilotAssets.ts is generated from it (python -m simulator.export_web) and web/src/constants/plantLayout.ts holds the building, zones and racks.
+
 8. Simulator design
 
 Each virtual machine runs a state machine (RUNNING / IDLE / FAULT) with physics-lite signals: temperature follows load with first-order lag; vibration = baseline + noise + degradation term that grows over time; injected faults (bearing wear, overheating, cavitation) for testing anomaly and RUL. It publishes canonical messages and exposes an OPC UA and Modbus server so connectors can be tested end-to-end.
+
+Logistics (simulator/logistics.py): an inbound truck docks on a timer; FLT-01 carries its pallets to the two line in-feeds; finished parts (part_count of each line's last CNC) become pallets that FLT-02 carries to the shipping dock, where a truck loads a full set and leaves. Forklifts route through the central aisle and recharge below 25% battery. Docks and forklifts publish canonical telemetry (asset types loading_dock and forklift) and TRUCK_ARRIVED / TRUCK_DEPARTED / PALLET_MOVED events.
+
+Dataset replay (simulator/datasets.py, opt-in with --replay-dir): AI4I 2020 rows drive CNC speed, load, power, spindle temperature and tool_wear_min, one row per 60 s cycle, and a failure row sets status FAULT; MetroPT-3 drives compressor pressure, temperature and motor power every 10 s; the Hydraulic Systems rig drives pump pressure, flow, power, motor temperature and vibration at 1 Hz. Signals whose range differs from the asset are scaled to its nominal rating; temperatures and vibration are used as recorded. An injected fault takes precedence over replay.
 
 9. Key algorithms
 

@@ -20,7 +20,7 @@ export const AlarmTicker: React.FC<AlarmTickerProps> = ({
       <div className="h-9 bg-slate-900/90 border-b border-slate-800 px-4 flex items-center justify-between text-xs text-slate-400 select-none">
         <div className="flex items-center gap-2 text-emerald-400 font-medium">
           <CheckCircle2 className="w-4 h-4" />
-          <span>All 25 assets nominal — No active alarms across Pune plant</span>
+          <span>All assets nominal — No active alarms across Pune plant</span>
         </div>
       </div>
     )

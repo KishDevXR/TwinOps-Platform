@@ -4,6 +4,7 @@ Subscribes to twinops/{site}/{asset}/telemetry and feeds the ingest pipeline.
 Ref: docs/04_architecture.md §3
 """
 
+import asyncio
 import json
 import logging
 
@@ -53,21 +54,21 @@ class TelemetryMqttConsumer:
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
             telemetry_msg = CanonicalTelemetryMessage.model_validate(payload)
-            # Push into async queue
-            import asyncio
-
-            try:
-                loop = asyncio.get_running_loop()
+            # paho calls this on its own thread: hand the message to the service's event loop
+            if self._loop:
                 asyncio.run_coroutine_threadsafe(
-                    self.ingest_service.ingest_message(telemetry_msg), loop
+                    self.ingest_service.ingest_message(telemetry_msg), self._loop
                 )
-            except RuntimeError:
-                pass
         except Exception as e:
             logger.error(f"Failed to process telemetry payload from {msg.topic}: {e}")
 
     def start(self):
-        """Start consumer loop in background thread."""
+        """Start consumer loop in background thread. Call from the service's event loop."""
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._loop = None
+            logger.warning("No running event loop: MQTT messages will not be ingested.")
         try:
             self.client.connect(self.broker_host, self.broker_port, keepalive=60)
             self.client.loop_start()

@@ -55,7 +55,7 @@ async def setup_test_database():
 async def test_ast_01_database_seed_and_hierarchy():
     """
     AST-01: Verify ISA-95 hierarchy tables in DB.
-    Enterprise -> Site (PUNE-01) -> Area -> Line -> Assets (25 assets)
+    Enterprise -> Site (PUNE-01) -> Area -> Line -> Assets (29 assets)
     """
     async with async_session_factory() as session:
         # Check site
@@ -67,21 +67,21 @@ async def test_ast_01_database_seed_and_hierarchy():
         # Check lines
         lines_res = await session.execute(select(LineModel))
         lines = lines_res.scalars().all()
-        assert len(lines) == 2
+        assert len(lines) == 3  # 2 machining lines + logistics
         line_ids = {l.id for l in lines}
         assert "LINE-01" in line_ids and "LINE-02" in line_ids
 
-        # Check all 25 assets
+        # Check all 29 assets
         assets_res = await session.execute(select(AssetModel))
         assets = assets_res.scalars().all()
-        assert len(assets) == 25
+        assert len(assets) == 29
 
         # Check CNC-01 details
         cnc1 = await session.get(AssetModel, "CNC-01")
         assert cnc1 is not None
         assert cnc1.criticality == "A"
         assert cnc1.type_id == "cnc_machine"
-        assert cnc1.position["x"] == 5.0
+        assert cnc1.position["x"] == 16.0
 
         # Check relationships
         rels_res = await session.execute(select(AssetRelationModel))
@@ -96,9 +96,9 @@ async def test_con_06_ingest_canonical_telemetry():
     verify batch unpacking into database, and verify quality preservation.
     """
     plant = VirtualPlant(site="PUNE-01")
-    # Generate 1 tick across all 25 assets
+    # Generate 1 tick across all 29 assets
     messages = plant.tick(dt=1.0)
-    assert len(messages) == 25
+    assert len(messages) == 29
 
     # Ingest through TelemetryIngestService
     await ingest_service.ingest_batch(messages)

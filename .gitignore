@@ -29,3 +29,6 @@ build/
 # Secrets
 .env
 .env.local
+
+# Downloaded open datasets (python -m simulator.datasets fetch)
+data/datasets/

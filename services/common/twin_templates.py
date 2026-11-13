@@ -46,11 +46,11 @@ class AssetTypeTemplate(BaseModel):
 
 
 # ==============================================================================
-# PILOT TEMPLATES (8 Standard Asset Types for Pilot Auto-Component Plant)
+# PILOT TEMPLATES (8 machine types + 2 logistics types for the pilot plant)
 # ==============================================================================
 
 TEMPLATES: dict[str, AssetTypeTemplate] = {
-    # 1. CNC Machining Centre (Fanuc / Siemens / Haas)
+    # 1. CNC Machining Centre
     "cnc_machine": AssetTypeTemplate(
         id="cnc_machine",
         name="CNC Machining Centre",
@@ -100,6 +100,13 @@ TEMPLATES: dict[str, AssetTypeTemplate] = {
             ),
             MetricDefinition(
                 name="part_count", unit="count", description="Completed workpiece counter"
+            ),
+            MetricDefinition(
+                name="tool_wear_min",
+                unit="min",
+                hi=200.0,
+                hi_hi=240.0,
+                description="Cutting time on the current tool (dataset replay only)",
             ),
             MetricDefinition(name="axis_x_pos_mm", unit="mm"),
             MetricDefinition(name="axis_y_pos_mm", unit="mm"),
@@ -219,7 +226,7 @@ TEMPLATES: dict[str, AssetTypeTemplate] = {
         ],
         ai={"anomaly": True, "rul": True},
     ),
-    # 3. 6-Axis Articulated Robot Cell (Fanuc / ABB / Kuka)
+    # 3. 6-Axis Articulated Robot Cell
     "robot_cell": AssetTypeTemplate(
         id="robot_cell",
         name="6-Axis Articulated Robot",
@@ -417,7 +424,7 @@ TEMPLATES: dict[str, AssetTypeTemplate] = {
         ],
         ai={"anomaly": True, "rul": False},
     ),
-    # 8. Digital Energy / Power Meter (Schneider / Siemens / ABB)
+    # 8. Digital Energy / Power Meter
     "energy_meter": AssetTypeTemplate(
         id="energy_meter",
         name="Digital Power & Energy Meter",
@@ -451,6 +458,47 @@ TEMPLATES: dict[str, AssetTypeTemplate] = {
             )
         ],
         ai={"anomaly": True, "rul": False},
+    ),
+    # 9. Forklift (position and load tracked by the backend)
+    "forklift": AssetTypeTemplate(
+        id="forklift",
+        name="Electric Forklift",
+        category="Logistics",
+        metrics=[
+            MetricDefinition(name="battery_pct", unit="%", lo=20.0, lo_lo=10.0),
+            MetricDefinition(name="pos_x_m", unit="m", description="Floor position, west-east"),
+            MetricDefinition(name="pos_z_m", unit="m", description="Floor position, south-north"),
+            MetricDefinition(name="heading_deg", unit="deg"),
+            MetricDefinition(name="speed_m_s", unit="m/s", hi=3.0),
+            MetricDefinition(name="load_kg", unit="kg", hi=2500.0),
+            MetricDefinition(name="pallets_moved", unit="count"),
+        ],
+        status_rules={"RUNNING": "speed_m_s > 0.1", "IDLE": "speed_m_s <= 0.1"},
+        model_3d="models/forklift.glb",
+        pm_defaults=[
+            PMDefault(
+                name="Mast Chain & Battery Inspection",
+                trigger_type="calendar",
+                interval_days=30,
+                checklist=["Check mast chain tension", "Inspect forks", "Check battery water"],
+            )
+        ],
+        ai={"anomaly": False, "rul": False},
+    ),
+    # 10. Loading dock (receiving / shipping)
+    "loading_dock": AssetTypeTemplate(
+        id="loading_dock",
+        name="Loading Dock",
+        category="Logistics",
+        metrics=[
+            MetricDefinition(name="truck_present", unit="", description="1 when a truck is docked"),
+            MetricDefinition(name="pallets_pending", unit="count", hi=12),
+            MetricDefinition(name="pallets_handled", unit="count"),
+            MetricDefinition(name="truck_dwell_s", unit="s", hi=900.0, hi_hi=1800.0),
+        ],
+        status_rules={"RUNNING": "truck_present > 0", "IDLE": "truck_present <= 0"},
+        model_3d="models/loading_dock.glb",
+        ai={"anomaly": False, "rul": False},
     ),
 }
 

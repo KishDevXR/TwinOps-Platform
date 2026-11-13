@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: twinops-digital-twin
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8000

@@ -35,7 +35,7 @@ TwinOps is a next-generation industrial digital twin and asset management platfo
                                          │ OT Boundary
                                ┌─────────▼──────────┐
                                │ Plant Simulator    │
-                               │ 25 Assets, 2 Lines │
+                               │ 29 Assets, 2 Lines │
                                └────────────────────┘
 ```
 
@@ -51,8 +51,8 @@ For step-by-step instructions to run each microservice, the virtual plant simula
 ```bash
 make test
 ```
-- **Backend (pytest)**: 55/55 passed (`tests/`)
-- **Frontend (vitest)**: 9/9 passed (`web/`)
+- **Backend (pytest)**: 70/70 passed (`tests/`)
+- **Frontend (vitest)**: 16/16 passed (`web/`)
 
 ### 3. Start Development Services
 ```bash

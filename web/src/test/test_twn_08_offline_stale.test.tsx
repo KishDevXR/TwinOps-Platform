@@ -1,34 +1,24 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { Header } from '../components/Header'
+import { Topbar } from '../components/layout/AppShell'
 import { LayerSelector } from '../components/LayerSelector'
 import { AlarmTicker } from '../components/AlarmTicker'
 import type { AlarmItem } from '../types/twin'
 
 describe('TC-TWN-08 & Web UI Components', () => {
-  it('Header shows site id, connection state, and alarm badge', () => {
+  it('Topbar shows connection state, latency and the active alarm count', () => {
     const onRefresh = vi.fn()
-    const onOpenAlarms = vi.fn()
-
-    render(
-      <Header
-        siteId="PUNE-01"
-        connectionState="connected"
-        lastLatencyMs={18}
-        alarmCount={3}
-        onRefresh={onRefresh}
-        onOpenAlarms={onOpenAlarms}
-      />
+    const { rerender } = render(
+      <Topbar connectionState="connected" lastLatencyMs={18} alarmCount={3} onRefresh={onRefresh} />
     )
-
-    expect(screen.getByText('PUNE-01')).toBeInTheDocument()
-    expect(screen.getByText('Live WS')).toBeInTheDocument()
-    expect(screen.getByText('18ms')).toBeInTheDocument()
+    expect(screen.getByTestId('connection-state')).toHaveTextContent('Live · 18ms')
     expect(screen.getByTestId('alarm-badge')).toHaveTextContent('3')
-
-    const refreshBtn = screen.getByLabelText('Refresh twin snapshot')
-    fireEvent.click(refreshBtn)
+    fireEvent.click(screen.getByLabelText('Refresh twin snapshot'))
     expect(onRefresh).toHaveBeenCalled()
+
+    rerender(<Topbar connectionState="disconnected" lastLatencyMs={18} alarmCount={0} onRefresh={onRefresh} />)
+    expect(screen.getByTestId('connection-state')).toHaveTextContent('Offline')
+    expect(screen.queryByTestId('alarm-badge')).toBeNull()
   })
 
   it('LayerSelector switches active layer between status, energy, and anomaly', () => {

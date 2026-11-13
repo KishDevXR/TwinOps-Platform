@@ -1,7 +1,7 @@
 """
 End-to-End Pipeline Integration Test (Steps 1 to 4).
 Demonstrates the full operational cycle:
-1. Virtual Plant Simulator generates 25-asset canonical telemetry (Step 1 & 2)
+1. Virtual Plant Simulator generates 29-asset canonical telemetry (Step 1 & 2)
 2. Telemetry Ingest Service buffers and flushes to database (Step 3)
 3. Asset Service serves ISA-95 tree and manages asset records (Step 4)
 4. Telemetry API queries verify real-time data flow and 1m rollups
@@ -36,17 +36,17 @@ async def test_e2e_full_steps_1_to_4_pipeline():
     # Step 1 & 2: Simulator & Canonical Schema
     # -------------------------------------------------------------
     plant = VirtualPlant(site="PUNE-01")
-    assert len(plant.machines) == 25
+    assert len(plant.machines) == 29
 
     # Simulate 3 consecutive 1-second ticks of the whole factory
     all_messages = []
     for _ in range(3):
         msgs = plant.tick(dt=1.0)
-        assert len(msgs) == 25
+        assert len(msgs) == 29
         all_messages.extend(msgs)
 
-    # 25 assets * 3 ticks = 75 canonical messages
-    assert len(all_messages) == 75
+    # 29 assets * 3 ticks = 87 canonical messages
+    assert len(all_messages) == 87
 
     # -------------------------------------------------------------
     # Step 3: Telemetry Ingest Pipeline & Database

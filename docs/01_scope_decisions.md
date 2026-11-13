@@ -48,7 +48,9 @@ Reactors, HVAC/AHU, cleanrooms
 
 Needs 21 CFR Part 11 audit trail compliance
 
-Pilot asset list (25 assets, about 400 tags): 6 CNC machines, 2 conveyors, 2 robots, 2 air compressors, 4 pumps, 1 chiller, 2 AHUs, 6 energy meters.
+Pilot asset list (29 assets, about 400 tags): 6 CNC machines, 2 conveyors, 2 robots, 2 air compressors, 4 pumps, 1 chiller, 2 AHUs, 6 energy meters, plus logistics: 2 loading docks (receiving, shipping) and 2 forklifts.
+
+The reference plant is a generic Pune auto-component machining plant laid out from the standard process flow (receiving → machining lines → wash and inspection → shipping). It does not copy any specific company's facility, and all makes and models in the asset register are fictional.
 
 2. Final protocol list
 
@@ -96,7 +98,7 @@ MVP
 
 MTConnect
 
-CNC machines (Fanuc, Haas, Mazak)
+CNC machines with an MTConnect agent
 
 HTTP agent client
 

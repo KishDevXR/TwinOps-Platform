@@ -176,6 +176,18 @@ PLT-03 REST API and webhooks for ERP/MES integration.
 
 PLT-04 Mobile-responsive web app, offline mode for technicians (PWA).
 
+6.8 Logistics (LOG)
+
+LOG-01 Loading docks and forklifts are assets with live twins: dock occupancy and pallet counts, forklift position, load and battery. The 3D viewer shows trucks, forklifts and staged pallets from this state.
+
+LOG-02 Truck arrivals and departures and pallet moves are published as canonical events on twinops/{site}/{asset}/event.
+
+LOG-03 Logistics KPIs: truck turnaround, pallets handled, forklift carry time and utilisation (GET /api/v1/analytics/logistics/kpis).
+
+6.9 Simulator data (SIM)
+
+SIM-01 The simulator can replay open datasets cleared for commercial use through the canonical metrics (AI4I 2020 for CNCs, MetroPT-3 for air compressors, Hydraulic Systems for pumps). Credits are listed in docs/DATASETS.md and shown in the viewer.
+
 7. Non-functional requirements
 
 Area

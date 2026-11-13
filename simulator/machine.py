@@ -23,8 +23,10 @@ class VirtualMachine:
     vibration harmonics, and controllable fault injection modes.
     """
 
-    def __init__(self, config: AssetConfig, site: str = "PUNE-01"):
+    def __init__(self, config: AssetConfig, site: str = "PUNE-01", logistics: Any = None):
         self.config = config
+        self.logistics = logistics  # LogisticsSim, for forklift / loading_dock assets
+        self.replay: Any = None  # simulator.datasets.Replay when dataset replay is on
         self.asset_id = config.asset_id
         self.type_id = config.type_id
         self.site = site
@@ -95,7 +97,9 @@ class VirtualMachine:
             quality_override = DataQuality.BAD
 
         # Run type-specific physics generator
-        if self.type_id == "cnc_machine":
+        if self.type_id in ("forklift", "loading_dock") and self.logistics:
+            metrics, status = self.logistics.metrics(self.asset_id)
+        elif self.type_id == "cnc_machine":
             metrics, status = self._step_cnc(dt)
         elif self.type_id == "centrifugal_pump":
             metrics, status = self._step_pump(dt)
@@ -113,6 +117,13 @@ class VirtualMachine:
             metrics, status = self._step_energy_meter(dt)
         else:
             metrics, status = self._step_generic(dt)
+
+        # Dataset replay overrides the synthetic signals; injected faults take precedence.
+        if self.replay and not self.active_faults:
+            overrides, replay_status = self.replay.next(dt)
+            for name, value in overrides.items():
+                metrics[name] = MetricValue(v=value, q=DataQuality.GOOD)
+            status = replay_status or status
 
         # Apply sensor quality override if active
         if quality_override is not None:

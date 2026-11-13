@@ -10,6 +10,8 @@ import json
 import logging
 import os
 
+import paho.mqtt.client as mqtt
+
 from services.alarm.engine import alarm_engine
 from services.common.canonical import CanonicalTelemetryMessage
 from services.common.database import get_async_session
@@ -29,6 +31,7 @@ class AlarmMqttConsumer:
         self.topic = topic
         self.running = False
         self._task: asyncio.Task | None = None
+        self._client: mqtt.Client | None = None
 
     async def handle_message(self, topic: str, payload_bytes: bytes):
         """Process incoming canonical telemetry and evaluate alarm rules."""
@@ -44,13 +47,34 @@ class AlarmMqttConsumer:
             logger.debug("Failed to evaluate telemetry on %s: %s", topic, e)
 
     async def start(self):
-        """Connect to MQTT broker and start subscription loop."""
-        try:
-            import aiomqtt
-        except ImportError:
-            logger.warning("aiomqtt not installed; MQTT subscription disabled.")
-            return
+        """Subscribe via paho (network thread) and evaluate messages one at a time here.
 
+        paho is used instead of aiomqtt: aiomqtt needs a selector event loop, which
+        uvicorn does not use on Windows, and it is not a project dependency.
+        """
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue[tuple[str, bytes]] = asyncio.Queue(maxsize=5000)
+
+        def _enqueue(item: tuple[str, bytes]):
+            if not queue.full():  # shed load rather than grow without bound
+                queue.put_nowait(item)
+
+        def _on_connect(client, userdata, flags, rc, properties=None):
+            if rc == 0:
+                client.subscribe(self.topic, qos=1)
+                logger.info("Alarm consumer subscribed to %s", self.topic)
+
+        def _on_message(client, userdata, msg):
+            loop.call_soon_threadsafe(_enqueue, (msg.topic, msg.payload))
+
+        self._client = mqtt.Client(
+            client_id="twinops_alarm_service", callback_api_version=mqtt.CallbackAPIVersion.VERSION2
+        )
+        self._client.on_connect = _on_connect
+        self._client.on_message = _on_message
+        # connect_async + loop_start retries in the background if the broker is not up yet
+        self._client.connect_async(self.broker_host, self.broker_port, keepalive=60)
+        self._client.loop_start()
         self.running = True
         logger.info(
             "Starting Alarm MQTT Consumer connecting to %s:%d (%s)",
@@ -60,21 +84,13 @@ class AlarmMqttConsumer:
         )
 
         while self.running:
-            try:
-                async with aiomqtt.Client(self.broker_host, self.broker_port) as client:
-                    await client.subscribe(self.topic)
-                    logger.info("Alarm consumer subscribed to %s", self.topic)
-                    async for message in client.messages:
-                        if not self.running:
-                            break
-                        await self.handle_message(str(message.topic), message.payload)
-            except Exception as e:
-                if not self.running:
-                    break
-                logger.debug("MQTT broker unavailable (%s), retrying in 3s...", e)
-                await asyncio.sleep(3.0)
+            topic, payload = await queue.get()
+            await self.handle_message(topic, payload)
 
     async def stop(self):
         self.running = False
+        if self._client:
+            self._client.loop_stop()
+            self._client.disconnect()
         if self._task and not self._task.done():
             self._task.cancel()

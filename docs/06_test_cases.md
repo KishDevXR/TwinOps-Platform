@@ -198,7 +198,7 @@ Excel import
 
 Import the 25-asset pilot register
 
-25 assets created under the right lines
+29 assets created under the right lines (25 machines, 4 logistics)
 
 TC-AST-06
 
@@ -278,7 +278,7 @@ TWN-03
 
 Performance
 
-Load the pilot scene (25 assets) on a mid-range laptop
+Load the pilot scene (29 assets) on a mid-range laptop
 
 ≥ 45 fps; load < 5 s
 
@@ -664,7 +664,7 @@ Each completes in < 3 min without training
 
 8. Site acceptance test (pilot)
 
-All 25 assets connected; ≥ 98% tags with good quality over 24 h.
+All 29 assets connected; ≥ 98% tags with good quality over 24 h.
 
 3D replica layout signed off by the plant engineer.
 

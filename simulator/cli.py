@@ -9,6 +9,7 @@ import argparse
 import asyncio
 import logging
 import signal
+from pathlib import Path
 
 from simulator.modbus_server import ModbusSimulatorServer
 from simulator.opcua_server import OpcUaSimulatorServer
@@ -39,9 +40,14 @@ async def main():
     parser.add_argument(
         "--inject", action="append", help="Inject fault: <asset_id>:<fault_type>[:<severity>]"
     )
+    parser.add_argument(
+        "--replay-dir",
+        type=Path,
+        help="Replay open datasets from this folder (see simulator/datasets.py)",
+    )
     args = parser.parse_args()
 
-    plant = VirtualPlant(site=args.site)
+    plant = VirtualPlant(site=args.site, replay_dir=args.replay_dir)
 
     # Apply initial fault injections if specified
     if args.inject:
@@ -82,7 +88,9 @@ async def main():
         except NotImplementedError:
             pass  # Windows event loop limitation for add_signal_handler
 
-    logger.info(f"TwinOps Simulator active for {len(plant.machines)} assets across 2 lines.")
+    logger.info(
+        f"TwinOps Simulator active for {len(plant.machines)} assets across 2 lines + logistics."
+    )
 
     sample_counter = 0
 
@@ -101,7 +109,7 @@ async def main():
         async def background_servers_tick():
             while not stop_event.is_set():
                 if modbus_server:
-                    modbus_server.update_registers_from_plant()
+                    await modbus_server.update_registers_from_plant()
                 if opcua_server:
                     await opcua_server.update_nodes_from_plant()
                 await asyncio.sleep(args.interval)
@@ -109,7 +117,10 @@ async def main():
         bg_task = asyncio.create_task(background_servers_tick())
 
         await plant.run_continuous(
-            interval_s=args.interval, on_telemetry=on_telemetry, stop_event=stop_event
+            interval_s=args.interval,
+            on_telemetry=on_telemetry,
+            on_event=publisher.publish_event,
+            stop_event=stop_event,
         )
 
         bg_task.cancel()

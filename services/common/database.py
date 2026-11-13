@@ -370,64 +370,70 @@ async def init_db():
 
 async def seed_pilot_data(session: AsyncSession):
     """
-    Seed initial ISA-95 site hierarchy, asset types, and all 25 pilot assets.
+    Seed initial ISA-95 site hierarchy, asset types, and all 29 pilot assets.
     """
     from services.common.twin_templates import TEMPLATES
     from simulator.config import ASSET_RELATIONSHIPS, PILOT_ASSETS
 
-    # Check if site hierarchy already seeded
-    res = await session.execute(select(func.count(SiteModel.id)))
-    if (res.scalar() or 0) == 0:
-        # 1. Site
-        site = SiteModel(
-            id="PUNE-01",
-            name="Pune Auto Machining Facility",
-            timezone="Asia/Kolkata",
-            address="Chakan Industrial Area, Phase II, Pune, Maharashtra 410501",
+    # Upsert (merge) so an existing DB picks up layout / register changes.
+    # The pilot register in simulator/config.py is the source of truth.
+    # 1. Site
+    site = SiteModel(
+        id="PUNE-01",
+        name="Pune Auto Machining Facility",
+        timezone="Asia/Kolkata",
+        address="Chakan Industrial Area, Phase II, Pune, Maharashtra 410501",
+    )
+    await session.merge(site)
+
+    # 2. Area
+    area = AreaModel(id="AREA-MACHINING", site_id="PUNE-01", name="Machining & Assembly Bay")
+    await session.merge(area)
+
+    # 3. Lines
+    line1 = LineModel(
+        id="LINE-01", area_id="AREA-MACHINING", name="Line 1: Cylinder Head Machining"
+    )
+    line2 = LineModel(
+        id="LINE-02", area_id="AREA-MACHINING", name="Line 2: Gearbox Casing Machining"
+    )
+    await session.merge(line1)
+    await session.merge(line2)
+    await session.merge(
+        AreaModel(id="AREA-LOGISTICS", site_id="PUNE-01", name="Docks & Material Handling")
+    )
+    await session.merge(
+        LineModel(id="LOG-01", area_id="AREA-LOGISTICS", name="Logistics: Docks & Forklifts")
+    )
+
+    # 4. Asset Types (from twin templates)
+    for tid, tpl in TEMPLATES.items():
+        atm = AssetTypeModel(id=tid, name=tpl.name, template=tpl.model_dump())
+        await session.merge(atm)
+
+    # 5. Assets (all 29 pilot assets)
+    for ac in PILOT_ASSETS:
+        am = AssetModel(
+            id=ac.asset_id,
+            line_id=ac.line_id,
+            type_id=ac.type_id,
+            name=ac.name,
+            make=ac.make,
+            model=ac.model,
+            serial_no=ac.serial_no,
+            criticality=ac.criticality,
+            lifecycle_state="Operating",
+            position=ac.position_3d,
+            properties=ac.nominal_params,
         )
-        session.add(site)
+        await session.merge(am)
 
-        # 2. Area
-        area = AreaModel(id="AREA-MACHINING", site_id="PUNE-01", name="Machining & Assembly Bay")
-        session.add(area)
-
-        # 3. Lines
-        line1 = LineModel(
-            id="LINE-01", area_id="AREA-MACHINING", name="Line 1: Cylinder Head Machining"
+    # 6. Relationships
+    for rel in ASSET_RELATIONSHIPS:
+        arm = AssetRelationModel(
+            from_asset=rel["from_asset"], to_asset=rel["to_asset"], kind=rel["kind"]
         )
-        line2 = LineModel(
-            id="LINE-02", area_id="AREA-MACHINING", name="Line 2: Gearbox Casing Machining"
-        )
-        session.add_all([line1, line2])
-
-        # 4. Asset Types (from twin templates)
-        for tid, tpl in TEMPLATES.items():
-            atm = AssetTypeModel(id=tid, name=tpl.name, template=tpl.model_dump())
-            session.add(atm)
-
-        # 5. Assets (all 25 pilot assets)
-        for ac in PILOT_ASSETS:
-            am = AssetModel(
-                id=ac.asset_id,
-                line_id=ac.line_id,
-                type_id=ac.type_id,
-                name=ac.name,
-                make=ac.make,
-                model=ac.model,
-                serial_no=ac.serial_no,
-                criticality=ac.criticality,
-                lifecycle_state="Operating",
-                position=ac.position_3d,
-                properties=ac.nominal_params,
-            )
-            session.add(am)
-
-        # 6. Relationships
-        for rel in ASSET_RELATIONSHIPS:
-            arm = AssetRelationModel(
-                from_asset=rel["from_asset"], to_asset=rel["to_asset"], kind=rel["kind"]
-            )
-            session.add(arm)
+        await session.merge(arm)
 
     # 7. Default Alarm Rules (ISA-18.2)
     rule_res = await session.execute(select(func.count(AlarmRuleModel.id)))
